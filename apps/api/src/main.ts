@@ -1,10 +1,14 @@
-import { NestFactory } from '@nestjs/core';
-import { AppModule, ObserveInstrument } from './app.module';
+﻿import { NestFactory } from '@nestjs/core';
+import { AppModule } from './app.module';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule, {
-    instrument: ObserveInstrument,
-  });
-  await app.listen(process.env.PORT ?? 3000);
+  const app = await NestFactory.create(AppModule);
+
+  const port = Number(process.env.API_PORT ?? 4000);
+
+  await app.listen(port);
+
+  console.log(`Bagheri API running on http://localhost:${port}`);
 }
-bootstrap();
+
+void bootstrap();

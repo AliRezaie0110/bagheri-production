@@ -8,7 +8,7 @@
       POSTGRES_USER: bagheri
       POSTGRES_PASSWORD: bagheri_local_dev
     ports:
-      - "5435:5432"
+      - "5436:5432"
     volumes:
       - bagheri_postgres_data:/var/lib/postgresql/data
 
