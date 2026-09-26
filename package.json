@@ -1,0 +1,19 @@
+﻿{
+  "name": "bagheri-production",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "dev:web": "npm run dev --workspace=@bagheri/web",
+    "dev:api": "npm run start:dev --workspace=@bagheri/api",
+    "build:web": "npm run build --workspace=@bagheri/web",
+    "build:api": "npm run build --workspace=@bagheri/api",
+    "build": "npm run build:api && npm run build:web",
+    "test:api": "npm run test --workspace=@bagheri/api -- --runInBand",
+    "db:up": "docker compose up -d postgres",
+    "db:down": "docker compose down",
+    "db:logs": "docker compose logs -f postgres"
+  }
+}
