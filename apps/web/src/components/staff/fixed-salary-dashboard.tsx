@@ -16,6 +16,7 @@ import {
   ClipboardCheck,
   Clock3,
   FileText,
+  Eye,
   History,
   LoaderCircle,
   RefreshCw,
@@ -41,8 +42,9 @@ import type {
   AuthUser,
 } from "@/lib/auth";
 
-import type {
-  EmployeeAccountResponse,
+import {
+  openEmployeeReceipt,
+  type EmployeeAccountResponse,
 } from "@/lib/worker-api";
 
 import {
@@ -272,6 +274,13 @@ function getErrorMessage(
       return "این مورد قبلاً توسط شخص دیگری بررسی شده است؛ اطلاعات تازه شد.";
     }
 
+    return caught.message;
+  }
+
+  if (
+    caught instanceof
+    Error
+  ) {
     return caught.message;
   }
 
@@ -835,6 +844,27 @@ export function FixedSalaryDashboard({
     }
   }
 
+  async function openReceipt(
+    paymentId: string,
+  ) {
+    setError(
+      null,
+    );
+
+    try {
+      await openEmployeeReceipt(
+        paymentId,
+      );
+    } catch (
+      caught
+    ) {
+      setError(
+        getErrorMessage(
+          caught,
+        ),
+      );
+    }
+  }
   const tabs =
     isSupervisor
       ? [
@@ -1974,6 +2004,19 @@ export function FixedSalaryDashboard({
                                   payment.paidAt,
                                 )}
                               </p>
+
+                              <p className="mt-1 text-[9px] font-bold text-[var(--muted)]">
+                                {payment.paymentMethod ===
+                                "CARD_TO_CARD"
+                                  ? "کارت‌به‌کارت"
+                                  : payment.paymentMethod ===
+                                      "BANK_TRANSFER"
+                                    ? "انتقال بانکی"
+                                    : payment.paymentMethod ===
+                                        "CASH"
+                                      ? "نقدی"
+                                      : "سایر"}
+                              </p>
                             </div>
 
                             <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[9px] font-black text-emerald-700">
@@ -1985,6 +2028,23 @@ export function FixedSalaryDashboard({
                             <p className="mt-3 border-t border-[var(--line)] pt-3 text-xs leading-6 text-[var(--muted)]">
                               {payment.note}
                             </p>
+                          )}
+
+                          {payment.hasReceipt && (
+                            <button
+                              type="button"
+                              onClick={
+                                () => {
+                                  void openReceipt(
+                                    payment.id,
+                                  );
+                                }
+                              }
+                              className="mt-3 flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-[var(--brand-soft)] text-xs font-black text-[var(--brand)] transition hover:bg-emerald-100"
+                            >
+                              <Eye className="size-4" />
+                              مشاهده رسید پرداخت
+                            </button>
                           )}
                         </article>
                       ),

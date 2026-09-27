@@ -50,12 +50,30 @@ export type WorkerHistoryResponse = {
 export type EmployeePayment = {
   id: string;
   amount: string;
+
+  paymentMethod:
+    | "CARD_TO_CARD"
+    | "BANK_TRANSFER"
+    | "CASH"
+    | "OTHER";
+
   paidAt: string;
-  note: string | null;
+
+  note:
+    | string
+    | null;
+
+  hasReceipt: boolean;
+
+  receiptOriginalName:
+    | string
+    | null;
+
   recordedBy: {
     id: string;
     fullName: string;
   };
+
   createdAt: string;
 };
 
@@ -129,6 +147,119 @@ export function getWorkerAccount(): Promise<EmployeeAccountResponse> {
       cache:
         "no-store",
     },
+  );
+}
+const EMPLOYEE_API_URL =
+  process.env.NEXT_PUBLIC_API_URL ??
+  "http://localhost:4000";
+
+async function fetchEmployeeReceipt(
+  paymentId: string,
+): Promise<Blob> {
+  const response =
+    await fetch(
+      `${EMPLOYEE_API_URL}/employee-account/payments/${paymentId}/receipt`,
+      {
+        method:
+          "GET",
+
+        credentials:
+          "include",
+      },
+    );
+
+  if (
+    response.ok
+  ) {
+    return response.blob();
+  }
+
+  let message =
+    `خطا در دریافت رسید (${response.status})`;
+
+  try {
+    const payload =
+      await response.json() as {
+        message?:
+          | string
+          | string[];
+      };
+
+    if (
+      Array.isArray(
+        payload.message,
+      )
+    ) {
+      message =
+        payload.message.join(
+          "، ",
+        );
+    } else if (
+      typeof payload.message ===
+      "string"
+    ) {
+      message =
+        payload.message;
+    }
+  } catch {
+    // Response may have no JSON body.
+  }
+
+  throw new Error(
+    message,
+  );
+}
+
+export async function openEmployeeReceipt(
+  paymentId: string,
+): Promise<void> {
+  const blob =
+    await fetchEmployeeReceipt(
+      paymentId,
+    );
+
+  const url =
+    URL.createObjectURL(
+      blob,
+    );
+
+  const opened =
+    window.open(
+      url,
+      "_blank",
+      "noopener,noreferrer",
+    );
+
+  if (!opened) {
+    const anchor =
+      document.createElement(
+        "a",
+      );
+
+    anchor.href =
+      url;
+
+    anchor.target =
+      "_blank";
+
+    anchor.rel =
+      "noopener noreferrer";
+
+    document.body.appendChild(
+      anchor,
+    );
+
+    anchor.click();
+    anchor.remove();
+  }
+
+  window.setTimeout(
+    () => {
+      URL.revokeObjectURL(
+        url,
+      );
+    },
+    60_000,
   );
 }
 

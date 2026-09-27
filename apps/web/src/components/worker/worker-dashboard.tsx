@@ -15,6 +15,7 @@ import {
   ClipboardCheck,
   Clock3,
   FileText,
+  Eye,
   History,
   LoaderCircle,
   PackageCheck,
@@ -43,6 +44,7 @@ import {
   getAvailableWork,
   getWorkerAccount,
   getWorkerHistory,
+  openEmployeeReceipt,
   WorkerHistoryEntry,
   WorkEntryStatus,
 } from "@/lib/worker-api";
@@ -209,6 +211,13 @@ function getErrorMessage(
       return "اجازه انجام این عملیات را ندارید.";
     }
 
+    return error.message;
+  }
+
+  if (
+    error instanceof
+    Error
+  ) {
     return error.message;
   }
 
@@ -746,6 +755,27 @@ export function WorkerDashboard({
     );
   }
 
+  async function openReceipt(
+    paymentId: string,
+  ) {
+    setError(
+      null,
+    );
+
+    try {
+      await openEmployeeReceipt(
+        paymentId,
+      );
+    } catch (
+      caught
+    ) {
+      setError(
+        getErrorMessage(
+          caught,
+        ),
+      );
+    }
+  }
   const tabs: Array<{
     id: Tab;
     label: string;
@@ -1939,6 +1969,19 @@ export function WorkerDashboard({
                                   payment.paidAt,
                                 )}
                               </p>
+
+                              <p className="mt-1 text-[9px] font-bold text-[var(--muted)]">
+                                {payment.paymentMethod ===
+                                "CARD_TO_CARD"
+                                  ? "کارت‌به‌کارت"
+                                  : payment.paymentMethod ===
+                                      "BANK_TRANSFER"
+                                    ? "انتقال بانکی"
+                                    : payment.paymentMethod ===
+                                        "CASH"
+                                      ? "نقدی"
+                                      : "سایر"}
+                              </p>
                             </div>
 
                             <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[9px] font-black text-emerald-700">
@@ -1950,6 +1993,23 @@ export function WorkerDashboard({
                             <p className="mt-3 border-t border-[var(--line)] pt-3 text-xs leading-6 text-[var(--muted)]">
                               {payment.note}
                             </p>
+                          )}
+
+                          {payment.hasReceipt && (
+                            <button
+                              type="button"
+                              onClick={
+                                () => {
+                                  void openReceipt(
+                                    payment.id,
+                                  );
+                                }
+                              }
+                              className="mt-3 flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-[var(--brand-soft)] text-xs font-black text-[var(--brand)] transition hover:bg-emerald-100"
+                            >
+                              <Eye className="size-4" />
+                              مشاهده رسید پرداخت
+                            </button>
                           )}
                         </article>
                       ),
