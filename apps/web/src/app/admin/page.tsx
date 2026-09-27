@@ -3,15 +3,16 @@
 import {
   RoleGuard,
 } from "@/components/auth/role-guard";
+
 import {
-  RoleLanding,
-} from "@/components/dashboard/role-landing";
+  ManagerDashboard,
+} from "@/components/admin/manager-dashboard";
 
 export default function AdminPage() {
   return (
     <RoleGuard role="MANAGER">
       {(user) => (
-        <RoleLanding
+        <ManagerDashboard
           user={user}
         />
       )}
