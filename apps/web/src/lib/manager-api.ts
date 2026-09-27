@@ -1379,6 +1379,428 @@ export function recordOwnerPayment(
   );
 }
 // =========================================================
+// REPORTS
+// =========================================================
+
+export type EmployeeReportFilters = {
+  employeeId?: string;
+  q?: string;
+
+  role?:
+    | "WORKER"
+    | "SUPERVISOR"
+    | "ASSISTANT";
+
+  isActive?:
+    | "true"
+    | "false";
+
+  from?: string;
+  to?: string;
+};
+
+export type EmployeeReportItem = {
+  id: string;
+  fullName: string;
+  phone: string;
+
+  role:
+    | "WORKER"
+    | "SUPERVISOR"
+    | "ASSISTANT";
+
+  roleLabel: string;
+
+  compensationType:
+    | "PIECE_RATE"
+    | "FIXED_MONTHLY";
+
+  compensationLabel: string;
+
+  isActive: boolean;
+
+  defaultMonthlySalary:
+    | string
+    | null;
+
+  periodEarned: string;
+  periodPaid: string;
+  pendingAmount: string;
+
+  lifetimeEarned: string;
+  lifetimePaid: string;
+  currentBalance: string;
+
+  approvedWorkEntries: number;
+  approvedQuantity: number;
+
+  pendingWorkEntries: number;
+  pendingQuantity: number;
+
+  approvedTimeEntries: number;
+  approvedMinutes: number;
+
+  pendingTimeEntries: number;
+  pendingMinutes: number;
+};
+
+export type EmployeeReportPayment = {
+  id: string;
+  employeeId: string;
+  employeeName: string;
+
+  role:
+    | "WORKER"
+    | "SUPERVISOR"
+    | "ASSISTANT";
+
+  roleLabel: string;
+
+  amount: string;
+  paidAt: string;
+
+  note:
+    | string
+    | null;
+
+  recordedBy: string;
+};
+
+export type EmployeeReportSalary = {
+  employeeId: string;
+  employeeName: string;
+
+  role:
+    | "SUPERVISOR"
+    | "ASSISTANT";
+
+  roleLabel: string;
+
+  year: number;
+  month: number;
+  amount: string;
+
+  note:
+    | string
+    | null;
+};
+
+export type EmployeeReportResponse = {
+  filters: {
+    employeeId:
+      | string
+      | null;
+
+    q:
+      | string
+      | null;
+
+    role:
+      | string
+      | null;
+
+    isActive:
+      | string
+      | null;
+
+    from:
+      | string
+      | null;
+
+    to:
+      | string
+      | null;
+  };
+
+  totals: {
+    employees: number;
+    periodEarned: string;
+    periodPaid: string;
+    lifetimeEarned: string;
+    lifetimePaid: string;
+    currentBalance: string;
+  };
+
+  items:
+    EmployeeReportItem[];
+
+  payments:
+    EmployeeReportPayment[];
+
+  monthlySalaries:
+    EmployeeReportSalary[];
+};
+
+export type OwnerReportFilters = {
+  ownerId?: string;
+  q?: string;
+
+  isActive?:
+    | "true"
+    | "false";
+
+  workBatchId?: string;
+  modelName?: string;
+
+  status?:
+    BatchStatus;
+
+  from?: string;
+  to?: string;
+};
+
+export type OwnerReportItem = {
+  id: string;
+  name: string;
+
+  phone:
+    | string
+    | null;
+
+  isActive: boolean;
+
+  matchedBatchCount: number;
+
+  periodDue: string;
+  periodReceived: string;
+
+  lifetimeDue: string;
+  lifetimeReceived: string;
+
+  unallocatedReceived: string;
+  currentBalance: string;
+};
+
+export type OwnerReportBatch = {
+  id: string;
+  ownerId: string;
+  ownerName: string;
+
+  code: string;
+  modelName: string;
+
+  status:
+    BatchStatus;
+
+  totalQuantity: number;
+
+  ownerPricingType:
+    OwnerPricingType;
+
+  ownerPricingLabel: string;
+
+  ownerUnitPrice:
+    | string
+    | null;
+
+  ownerFixedAmount:
+    | string
+    | null;
+
+  due: string;
+  linkedReceived: string;
+  linkedBalance: string;
+
+  startDate:
+    | string
+    | null;
+
+  createdAt: string;
+};
+
+export type OwnerReportPayment = {
+  id: string;
+  ownerId: string;
+  ownerName: string;
+
+  workBatchId:
+    | string
+    | null;
+
+  batchCode:
+    | string
+    | null;
+
+  modelName:
+    | string
+    | null;
+
+  amount: string;
+  paidAt: string;
+
+  note:
+    | string
+    | null;
+
+  recordedBy: string;
+};
+
+export type OwnerReportResponse = {
+  filters: {
+    ownerId:
+      | string
+      | null;
+
+    q:
+      | string
+      | null;
+
+    isActive:
+      | string
+      | null;
+
+    workBatchId:
+      | string
+      | null;
+
+    modelName:
+      | string
+      | null;
+
+    status:
+      | string
+      | null;
+
+    from:
+      | string
+      | null;
+
+    to:
+      | string
+      | null;
+  };
+
+  totals: {
+    owners: number;
+    periodDue: string;
+    periodReceived: string;
+    lifetimeDue: string;
+    lifetimeReceived: string;
+    currentBalance: string;
+  };
+
+  items:
+    OwnerReportItem[];
+
+  batches:
+    OwnerReportBatch[];
+
+  payments:
+    OwnerReportPayment[];
+};
+
+export function getEmployeeReport(
+  filters:
+    EmployeeReportFilters,
+): Promise<EmployeeReportResponse> {
+  return apiFetch<EmployeeReportResponse>(
+    queryPath(
+      "/admin/reports/employees",
+      filters,
+    ),
+    {
+      method:
+        "GET",
+
+      cache:
+        "no-store",
+    },
+  );
+}
+
+export function getOwnerReport(
+  filters:
+    OwnerReportFilters,
+): Promise<OwnerReportResponse> {
+  return apiFetch<OwnerReportResponse>(
+    queryPath(
+      "/admin/reports/owners",
+      filters,
+    ),
+    {
+      method:
+        "GET",
+
+      cache:
+        "no-store",
+    },
+  );
+}
+
+async function downloadManagerExcel(
+  path: string,
+  filters:
+    Record<
+      string,
+      QueryValue
+    >,
+  fileName: string,
+): Promise<void> {
+  const response =
+    await managerRawFetch(
+      queryPath(
+        path,
+        filters,
+      ),
+      {
+        method:
+          "GET",
+      },
+    );
+
+  const blob =
+    await response.blob();
+
+  const url =
+    URL.createObjectURL(
+      blob,
+    );
+
+  const anchor =
+    document.createElement(
+      "a",
+    );
+
+  anchor.href =
+    url;
+
+  anchor.download =
+    fileName;
+
+  document.body.appendChild(
+    anchor,
+  );
+
+  anchor.click();
+  anchor.remove();
+
+  URL.revokeObjectURL(
+    url,
+  );
+}
+
+export function downloadEmployeeReportExcel(
+  filters:
+    EmployeeReportFilters,
+): Promise<void> {
+  return downloadManagerExcel(
+    "/admin/reports/employees.xlsx",
+    filters,
+    "bagheri-employees-report.xlsx",
+  );
+}
+
+export function downloadOwnerReportExcel(
+  filters:
+    OwnerReportFilters,
+): Promise<void> {
+  return downloadManagerExcel(
+    "/admin/reports/owners.xlsx",
+    filters,
+    "bagheri-owners-report.xlsx",
+  );
+}
+// =========================================================
 // ERROR MAPPING
 // =========================================================
 

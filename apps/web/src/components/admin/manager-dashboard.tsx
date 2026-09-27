@@ -44,6 +44,10 @@ import {
 } from "@/components/admin/owners-section";
 
 import {
+  ReportsSection,
+} from "@/components/admin/reports-section";
+
+import {
   PersonnelSection,
 } from "@/components/admin/personnel-section";
 
@@ -303,10 +307,7 @@ export function ManagerDashboard({
 
       {section ===
         "reports" && (
-        <ComingSoon
-          title="گزارش‌ها"
-          text="گزارش‌ها و خروجی Excel به رابط مدیر متصل خواهند شد."
-        />
+        <ReportsSection />
       )}
     </AppShell>
   );

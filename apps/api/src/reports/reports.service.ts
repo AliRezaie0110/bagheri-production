@@ -323,7 +323,7 @@ export class ReportsService {
               'FFFFFFFF',
           },
           name:
-            'Tahoma',
+            'Vazirmatn',
           size:
             10,
         };
@@ -394,7 +394,7 @@ export class ReportsService {
             cell.font = {
               ...cell.font,
               name:
-                'Tahoma',
+                'Vazirmatn',
               size:
                 rowNumber === 1
                   ? 10
@@ -441,7 +441,7 @@ export class ReportsService {
       bold:
         true,
       name:
-        'Tahoma',
+        'Vazirmatn',
     };
 
     row.fill = {
