@@ -1032,6 +1032,353 @@ export async function shareManagerEmployeeReceipt(
   );
 }
 // =========================================================
+// MANAGER APPROVALS
+// =========================================================
+
+export type PendingWorkEntry = {
+  id: string;
+
+  worker: {
+    id: string;
+    fullName: string;
+  };
+
+  batchOperationId: string;
+  batchId: string;
+  batchCode: string;
+  modelName: string;
+  operationId: string;
+  operationName: string;
+
+  quantity: number;
+
+  workerNote:
+    | string
+    | null;
+
+  status: "PENDING";
+
+  createdAt: string;
+
+  targetQuantity: number;
+  claimedQuantity: number;
+  approvedQuantity: number;
+  remainingQuantity: number;
+
+  unitRate: string;
+  totalAmount: string;
+};
+
+export type PendingWorkEntriesResponse = {
+  items:
+    PendingWorkEntry[];
+};
+
+export type PendingTimeEntry = {
+  id: string;
+
+  employee: {
+    id: string;
+    fullName: string;
+
+    role:
+      | "SUPERVISOR"
+      | "ASSISTANT";
+  };
+
+  workDate: string;
+
+  startedAt:
+    | string
+    | null;
+
+  endedAt:
+    | string
+    | null;
+
+  minutesWorked: number;
+
+  note:
+    | string
+    | null;
+
+  status: "PENDING";
+
+  createdAt: string;
+
+  defaultMonthlySalary:
+    | string
+    | null;
+};
+
+export type PendingTimeEntriesResponse = {
+  items:
+    PendingTimeEntry[];
+};
+
+export function listPendingWorkEntries(): Promise<PendingWorkEntriesResponse> {
+  return apiFetch<PendingWorkEntriesResponse>(
+    "/work-entries/pending",
+    {
+      method:
+        "GET",
+
+      cache:
+        "no-store",
+    },
+  );
+}
+
+export function reviewWorkEntry(
+  id: string,
+
+  decision:
+    | "approve"
+    | "reject",
+
+  reviewerNote?:
+    string,
+): Promise<unknown> {
+  return apiFetch(
+    `/work-entries/${id}/${decision}`,
+    {
+      method:
+        "POST",
+
+      body:
+        JSON.stringify({
+          ...(reviewerNote?.trim()
+            ? {
+                reviewerNote:
+                  reviewerNote.trim(),
+              }
+            : {}),
+        }),
+    },
+  );
+}
+
+export function listPendingTimeEntries(): Promise<PendingTimeEntriesResponse> {
+  return apiFetch<PendingTimeEntriesResponse>(
+    "/time-entries/pending",
+    {
+      method:
+        "GET",
+
+      cache:
+        "no-store",
+    },
+  );
+}
+
+export function reviewTimeEntry(
+  id: string,
+
+  decision:
+    | "approve"
+    | "reject",
+
+  reviewerNote?:
+    string,
+): Promise<unknown> {
+  return apiFetch(
+    `/time-entries/${id}/${decision}`,
+    {
+      method:
+        "POST",
+
+      body:
+        JSON.stringify({
+          ...(reviewerNote?.trim()
+            ? {
+                reviewerNote:
+                  reviewerNote.trim(),
+              }
+            : {}),
+        }),
+    },
+  );
+}
+
+// =========================================================
+// OWNER ACCOUNTS
+// =========================================================
+
+export type OwnerAccountSummary = {
+  id: string;
+  name: string;
+
+  phone:
+    | string
+    | null;
+
+  isActive: boolean;
+
+  batchCount: number;
+
+  due: string;
+  received: string;
+  unallocatedReceived: string;
+  balance: string;
+};
+
+export type OwnerAccountsResponse = {
+  items:
+    OwnerAccountSummary[];
+
+  pagination:
+    Pagination;
+};
+
+export type OwnerAccountBatch = {
+  id: string;
+  code: string;
+  modelName: string;
+  totalQuantity: number;
+
+  status:
+    BatchStatus;
+
+  ownerPricingType:
+    OwnerPricingType;
+
+  ownerUnitPrice:
+    | string
+    | null;
+
+  ownerFixedAmount:
+    | string
+    | null;
+
+  due: string;
+  received: string;
+  balance: string;
+
+  startDate:
+    | string
+    | null;
+
+  completedAt:
+    | string
+    | null;
+};
+
+export type OwnerPaymentItem = {
+  id: string;
+  amount: string;
+  paidAt: string;
+
+  note:
+    | string
+    | null;
+
+  batch:
+    | {
+        id: string;
+        code: string;
+        modelName: string;
+      }
+    | null;
+
+  recordedBy: {
+    id: string;
+    fullName: string;
+  };
+
+  createdAt: string;
+};
+
+export type OwnerAccountDetail = {
+  owner: {
+    id: string;
+    name: string;
+
+    phone:
+      | string
+      | null;
+
+    note:
+      | string
+      | null;
+
+    isActive: boolean;
+  };
+
+  totals: {
+    due: string;
+    received: string;
+    unallocatedReceived: string;
+    balance: string;
+  };
+
+  batches:
+    OwnerAccountBatch[];
+
+  payments:
+    OwnerPaymentItem[];
+};
+
+export function listOwnerAccounts(
+  params: {
+    q?: string;
+    isActive?: boolean;
+    page?: number;
+    pageSize?: number;
+  } = {},
+): Promise<OwnerAccountsResponse> {
+  return apiFetch<OwnerAccountsResponse>(
+    queryPath(
+      "/admin/owner-accounts",
+      params,
+    ),
+    {
+      method:
+        "GET",
+
+      cache:
+        "no-store",
+    },
+  );
+}
+
+export function getOwnerAccount(
+  ownerId: string,
+): Promise<OwnerAccountDetail> {
+  return apiFetch<OwnerAccountDetail>(
+    `/admin/owner-accounts/${ownerId}`,
+    {
+      method:
+        "GET",
+
+      cache:
+        "no-store",
+    },
+  );
+}
+
+export function recordOwnerPayment(
+  ownerId: string,
+
+  input: {
+    amount: string;
+    workBatchId?: string;
+    note?: string;
+  },
+): Promise<unknown> {
+  return apiFetch(
+    `/admin/owner-accounts/${ownerId}/payments`,
+    {
+      method:
+        "POST",
+
+      body:
+        JSON.stringify(
+          input,
+        ),
+    },
+  );
+}
+// =========================================================
 // ERROR MAPPING
 // =========================================================
 

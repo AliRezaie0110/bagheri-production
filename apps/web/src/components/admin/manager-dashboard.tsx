@@ -28,8 +28,12 @@ import {
 } from "@/components/admin/batches-section";
 
 import {
-  EmployeeAccountsSection,
-} from "@/components/admin/employee-accounts-section";
+  AccountsHub,
+} from "@/components/admin/accounts-hub";
+
+import {
+  ApprovalsSection,
+} from "@/components/admin/approvals-section";
 
 import {
   OperationsSection,
@@ -289,15 +293,12 @@ export function ManagerDashboard({
 
       {section ===
         "approvals" && (
-        <ComingSoon
-          title="تأییدها"
-          text="صف تأیید کار و ساعت در مرحله مالی و مدیریتی بعدی متصل می‌شود."
-        />
+        <ApprovalsSection />
       )}
 
       {section ===
         "accounts" && (
-        <EmployeeAccountsSection />
+        <AccountsHub />
       )}
 
       {section ===
