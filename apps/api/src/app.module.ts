@@ -12,6 +12,7 @@ import { BatchesModule } from './batches/batches.module';
 import { WorkEntriesModule } from './work-entries/work-entries.module';
 import { TimeEntriesModule } from './time-entries/time-entries.module';
 import { EmployeeAccountsModule } from './employee-accounts/employee-accounts.module';
+import { OwnerAccountsModule } from './owner-accounts/owner-accounts.module';
 import { HealthModule } from './health/health.module';
 import { OperationsModule } from './operations/operations.module';
 import { OwnersModule } from './owners/owners.module';
@@ -43,6 +44,7 @@ import { PrismaModule } from './prisma/prisma.module';
     WorkEntriesModule,
     TimeEntriesModule,
     EmployeeAccountsModule,
+    OwnerAccountsModule,
   ],
   controllers: [
     AppController,
