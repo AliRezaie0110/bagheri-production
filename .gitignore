@@ -1,4 +1,4 @@
-﻿node_modules/
+node_modules/
 .next/
 dist/
 coverage/
@@ -21,3 +21,4 @@ Thumbs.db
 apps/api/src/generated/prisma/
 
 *.tsbuildinfo
+apps/api/uploads/

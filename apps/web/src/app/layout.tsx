@@ -6,6 +6,7 @@ import type {
   ReactNode,
 } from "react";
 
+import "vazirmatn/Vazirmatn-font-face.css";
 import "./globals.css";
 
 export const metadata: Metadata = {

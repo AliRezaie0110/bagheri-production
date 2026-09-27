@@ -286,6 +286,10 @@ model EmployeePayment {
   paidAt DateTime
   note   String?
 
+  paymentMethod       String  @default("CARD_TO_CARD") @db.VarChar(30)
+  receiptFileName     String? @db.VarChar(255)
+  receiptOriginalName String? @db.VarChar(255)
+  receiptMimeType     String? @db.VarChar(100)
   recordedById String
 
   createdAt DateTime @default(now())

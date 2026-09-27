@@ -1,5 +1,6 @@
 import {
   IsDateString,
+  IsIn,
   IsOptional,
   IsString,
   Matches,
@@ -10,6 +11,15 @@ export class CreateEmployeePaymentDto {
   @IsString()
   @Matches(/^[1-9]\d{0,17}$/)
   amount!: string;
+
+  @IsOptional()
+  @IsIn([
+    'CARD_TO_CARD',
+    'BANK_TRANSFER',
+    'CASH',
+    'OTHER',
+  ])
+  paymentMethod?: string;
 
   @IsOptional()
   @IsDateString()
