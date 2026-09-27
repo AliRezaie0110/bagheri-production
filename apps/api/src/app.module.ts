@@ -10,6 +10,7 @@ import { RolesGuard } from './auth/guards/roles.guard';
 import { SessionAuthGuard } from './auth/guards/session-auth.guard';
 import { BatchesModule } from './batches/batches.module';
 import { WorkEntriesModule } from './work-entries/work-entries.module';
+import { TimeEntriesModule } from './time-entries/time-entries.module';
 import { HealthModule } from './health/health.module';
 import { OperationsModule } from './operations/operations.module';
 import { OwnersModule } from './owners/owners.module';
@@ -39,6 +40,7 @@ import { PrismaModule } from './prisma/prisma.module';
     OwnersModule,
     BatchesModule,
     WorkEntriesModule,
+    TimeEntriesModule,
   ],
   controllers: [
     AppController,
