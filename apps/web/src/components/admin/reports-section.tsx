@@ -1,5 +1,7 @@
 "use client";
 
+
+import { JalaliDateInput } from "@/components/ui/jalali-date-input";
 import {
   BriefcaseBusiness,
   CalendarDays,
@@ -92,8 +94,7 @@ function date(
   }
 
   try {
-    return new Intl.DateTimeFormat(
-      "fa-IR",
+    return new Intl.DateTimeFormat("fa-IR-u-ca-persian",
       {
         year:
           "numeric",
@@ -747,8 +748,7 @@ function EmployeeReports() {
           <Filter
             label="از تاریخ"
           >
-            <input
-              type="date"
+            <JalaliDateInput
               dir="ltr"
               value={
                 from
@@ -770,8 +770,7 @@ function EmployeeReports() {
           <Filter
             label="تا تاریخ"
           >
-            <input
-              type="date"
+            <JalaliDateInput
               dir="ltr"
               value={
                 to
@@ -1873,8 +1872,7 @@ function OwnerReports() {
           <Filter
             label="از تاریخ"
           >
-            <input
-              type="date"
+            <JalaliDateInput
               dir="ltr"
               value={
                 from
@@ -1896,8 +1894,7 @@ function OwnerReports() {
           <Filter
             label="تا تاریخ"
           >
-            <input
-              type="date"
+            <JalaliDateInput
               dir="ltr"
               value={
                 to

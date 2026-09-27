@@ -39,7 +39,7 @@ const roleContent: Record<
 > = {
   WORKER: {
     eyebrow:
-      "پنل کارگر",
+      "پنل همکار",
     title:
       "کارهای من",
     description:
@@ -160,7 +160,7 @@ const roleContent: Record<
         title:
           "پرسنل",
         description:
-          "مدیریت کارگر، سرپرست و وردست",
+          "مدیریت همکار، سرپرست و وردست",
         icon:
           UsersRound,
         badge:

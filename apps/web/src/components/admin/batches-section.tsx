@@ -1,5 +1,7 @@
 "use client";
 
+
+import { JalaliDateInput } from "@/components/ui/jalali-date-input";
 import {
   Boxes,
   Check,
@@ -105,8 +107,7 @@ function faDate(
   }
 
   try {
-    return new Intl.DateTimeFormat(
-      "fa-IR",
+    return new Intl.DateTimeFormat("fa-IR-u-ca-persian",
       {
         year:
           "numeric",
@@ -1544,8 +1545,7 @@ function CreateBatchModal({
                   <Field
                     label="تاریخ شروع"
                   >
-                    <input
-                      type="date"
+                    <JalaliDateInput
                       dir="ltr"
                       value={
                         startDate

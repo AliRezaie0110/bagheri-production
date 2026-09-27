@@ -63,7 +63,7 @@ const paymentMethodLabel:
 
 const roleLabel = {
   WORKER:
-    "کارگر",
+    "همکار",
 
   SUPERVISOR:
     "سرپرست",
@@ -94,8 +94,7 @@ function dateTime(
     string,
 ): string {
   try {
-    return new Intl.DateTimeFormat(
-      "fa-IR",
+    return new Intl.DateTimeFormat("fa-IR-u-ca-persian",
       {
         year:
           "numeric",
@@ -711,7 +710,7 @@ export function EmployeeAccountsSection() {
           </h2>
 
           <p className="mt-1 text-xs leading-6 text-[var(--muted)]">
-            درآمد، پرداخت‌ها و مانده هر کارگر، سرپرست و وردست را ببینید و پرداخت واقعی ثبت کنید.
+            درآمد، پرداخت‌ها و مانده هر همکار، سرپرست و وردست را ببینید و پرداخت واقعی ثبت کنید.
           </p>
         </div>
 
@@ -841,7 +840,7 @@ export function EmployeeAccountsSection() {
           </option>
 
           <option value="WORKER">
-            کارگر
+            همکار
           </option>
 
           <option value="SUPERVISOR">

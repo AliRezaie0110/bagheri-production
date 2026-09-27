@@ -49,7 +49,7 @@ const roleLabel: Record<
     "وردست",
 
   WORKER:
-    "کارگر",
+    "همکار",
 };
 
 const inputClass =
@@ -517,7 +517,7 @@ export function PersonnelSection() {
           </h2>
 
           <p className="mt-1 text-xs leading-6 text-[var(--muted)]">
-            کارگر، سرپرست و وردست را مدیریت کنید. غیرفعال‌سازی سابقه فرد را حذف نمی‌کند.
+            همکار، سرپرست و وردست را مدیریت کنید. غیرفعال‌سازی سابقه فرد را حذف نمی‌کند.
           </p>
         </div>
 
@@ -659,7 +659,7 @@ export function PersonnelSection() {
           </option>
 
           <option value="WORKER">
-            کارگر
+            همکار
           </option>
 
           <option value="SUPERVISOR">
@@ -1020,7 +1020,7 @@ export function PersonnelSection() {
                   }
                 >
                   <option value="WORKER">
-                    کارگر — دانه‌ای
+                    همکار — دانه‌ای
                   </option>
 
                   <option value="SUPERVISOR">
@@ -1081,7 +1081,7 @@ export function PersonnelSection() {
               <div className="rounded-2xl bg-[var(--surface-soft)] p-4 text-[11px] leading-6 text-[var(--muted)]">
                 {form.role ===
                 "WORKER"
-                  ? "کارگر به‌صورت دانه‌ای محاسبه می‌شود و نرخ درآمد از عملیات ثبت‌شده گرفته می‌شود."
+                  ? "همکار به‌صورت دانه‌ای محاسبه می‌شود و نرخ درآمد از عملیات ثبت‌شده گرفته می‌شود."
                   : form.role ===
                       "SUPERVISOR"
                     ? "فقط یک سرپرست فعال می‌تواند در سیستم وجود داشته باشد."

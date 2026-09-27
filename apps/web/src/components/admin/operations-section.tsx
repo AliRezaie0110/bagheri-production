@@ -60,8 +60,7 @@ function date(
   }
 
   try {
-    return new Intl.DateTimeFormat(
-      "fa-IR",
+    return new Intl.DateTimeFormat("fa-IR-u-ca-persian",
       {
         year:
           "numeric",

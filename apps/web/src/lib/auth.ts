@@ -29,7 +29,7 @@ export const ROLE_LABEL: Record<UserRole, string> = {
   MANAGER: "مدیر",
   SUPERVISOR: "سرپرست",
   ASSISTANT: "وردست",
-  WORKER: "کارگر",
+  WORKER: "همکار",
 };
 
 export function roleHomePath(

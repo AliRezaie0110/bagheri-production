@@ -1,5 +1,7 @@
 "use client";
 
+
+import { JalaliDateInput } from "@/components/ui/jalali-date-input";
 import {
   FormEvent,
   useCallback,
@@ -165,8 +167,7 @@ function formatDate(
   date: string,
 ): string {
   try {
-    return new Intl.DateTimeFormat(
-      "fa-IR",
+    return new Intl.DateTimeFormat("fa-IR-u-ca-persian",
       {
         year:
           "numeric",
@@ -189,8 +190,7 @@ function formatDateTime(
   value: string,
 ): string {
   try {
-    return new Intl.DateTimeFormat(
-      "fa-IR",
+    return new Intl.DateTimeFormat("fa-IR-u-ca-persian",
       {
         year:
           "numeric",
@@ -872,7 +872,7 @@ export function FixedSalaryDashboard({
             id:
               "work-review" as const,
             label:
-              "کار کارگران",
+              "کار همکاران",
             icon:
               ClipboardCheck,
             badge:
@@ -943,7 +943,7 @@ export function FixedSalaryDashboard({
       }
       description={
         isSupervisor
-          ? "بررسی کار کارگران، تأیید ساعت وردست و ثبت ساعت کاری شخصی."
+          ? "بررسی کار همکاران، تأیید ساعت وردست و ثبت ساعت کاری شخصی."
           : "ثبت ساعت کاری، مشاهده تأییدها و پیگیری حساب شخصی."
       }
     >
@@ -1180,7 +1180,7 @@ export function FixedSalaryDashboard({
                   </h3>
 
                   <p className="mt-1 text-xs leading-6 text-[var(--muted)]">
-                    فقط تعداد و اطلاعات کار را بررسی می‌کنید؛ مبلغ درآمد کارگر در این پنل نمایش داده نمی‌شود.
+                    فقط تعداد و اطلاعات کار را بررسی می‌کنید؛ مبلغ درآمد همکار در این پنل نمایش داده نمی‌شود.
                   </p>
                 </div>
 
@@ -1191,7 +1191,7 @@ export function FixedSalaryDashboard({
                       ClipboardCheck
                     }
                     title="کار منتظر تأییدی وجود ندارد"
-                    description="هر ثبت جدید کارگران در این بخش ظاهر می‌شود."
+                    description="هر ثبت جدید همکاران در این بخش ظاهر می‌شود."
                   />
                 ) : (
                   <div className="space-y-3">
@@ -1277,7 +1277,7 @@ export function FixedSalaryDashboard({
                           {item.workerNote && (
                             <div className="mt-3 rounded-2xl border border-[var(--line)] p-3">
                               <p className="text-[9px] font-black text-[var(--muted)]">
-                                توضیح کارگر
+                                توضیح همکار
                               </p>
 
                               <p className="mt-1 text-xs leading-6">
@@ -1489,9 +1489,8 @@ export function FixedSalaryDashboard({
                   <div className="relative">
                     <CalendarDays className="pointer-events-none absolute right-4 top-1/2 size-4 -translate-y-1/2 text-[var(--muted)]" />
 
-                    <input
+                    <JalaliDateInput
                       id="work-date"
-                      type="date"
                       dir="ltr"
                       max={
                         localToday()

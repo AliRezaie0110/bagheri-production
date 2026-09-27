@@ -32,6 +32,101 @@ export class ReportsService {
       PrismaService,
   ) {}
 
+  private jalaliExcelDate(
+    value: string,
+  ): string {
+    const formatter =
+      new Intl.DateTimeFormat(
+        'fa-IR-u-ca-persian-nu-latn',
+        {
+          timeZone:
+            'UTC',
+          year:
+            'numeric',
+          month:
+            '2-digit',
+          day:
+            '2-digit',
+        },
+      );
+
+    return value.replace(
+      /\b(\d{4})-(\d{2})-(\d{2})\b/g,
+      (dateText) => {
+        const date =
+          new Date(
+            `${dateText}T12:00:00.000Z`,
+          );
+
+        if (
+          Number.isNaN(
+            date.getTime(),
+          )
+        ) {
+          return dateText;
+        }
+
+        return formatter.format(
+          date,
+        );
+      },
+    );
+  }
+
+  private localizeWorkbookDates(
+    workbook:
+      ExcelJS.Workbook,
+  ): void {
+    const formatter =
+      new Intl.DateTimeFormat(
+        'fa-IR-u-ca-persian-nu-latn',
+        {
+          timeZone:
+            'UTC',
+          year:
+            'numeric',
+          month:
+            '2-digit',
+          day:
+            '2-digit',
+        },
+      );
+
+    workbook.eachSheet(
+      (worksheet) => {
+        worksheet.eachRow(
+          (row) => {
+            row.eachCell(
+              (cell) => {
+                if (
+                  cell.value instanceof
+                  Date
+                ) {
+                  cell.value =
+                    formatter.format(
+                      cell.value,
+                    );
+
+                  return;
+                }
+
+                if (
+                  typeof cell.value ===
+                  'string'
+                ) {
+                  cell.value =
+                    this.jalaliExcelDate(
+                      cell.value,
+                    );
+                }
+              },
+            );
+          },
+        );
+      },
+    );
+  }
+
   private money(
     value:
       | {
@@ -1937,6 +2032,9 @@ export class ReportsService {
       salaries,
     );
 
+    this.localizeWorkbookDates(workbook);
+
+
     const buffer =
       await workbook.xlsx.writeBuffer();
 
@@ -2413,6 +2511,9 @@ export class ReportsService {
     this.styleWorksheet(
       payments,
     );
+
+    this.localizeWorkbookDates(workbook);
+
 
     const buffer =
       await workbook.xlsx.writeBuffer();

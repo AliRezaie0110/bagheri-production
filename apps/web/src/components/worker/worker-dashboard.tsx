@@ -129,8 +129,7 @@ function formatDate(
   value: string,
 ): string {
   try {
-    return new Intl.DateTimeFormat(
-      "fa-IR",
+    return new Intl.DateTimeFormat("fa-IR-u-ca-persian",
       {
         year:
           "numeric",
@@ -814,7 +813,7 @@ export function WorkerDashboard({
   return (
     <AppShell
       user={user}
-      eyebrow="پنل کارگر"
+      eyebrow="پنل همکار"
       title="کارهای من"
       description="ثبت کار روزانه، پیگیری تأییدها و مشاهده حساب شخصی."
     >
