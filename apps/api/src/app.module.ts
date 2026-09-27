@@ -8,9 +8,11 @@ import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
 import { RolesGuard } from './auth/guards/roles.guard';
 import { SessionAuthGuard } from './auth/guards/session-auth.guard';
+import { BatchesModule } from './batches/batches.module';
 import { HealthModule } from './health/health.module';
-import { PersonnelModule } from './personnel/personnel.module';
 import { OperationsModule } from './operations/operations.module';
+import { OwnersModule } from './owners/owners.module';
+import { PersonnelModule } from './personnel/personnel.module';
 import { PrismaModule } from './prisma/prisma.module';
 
 @Module({
@@ -33,6 +35,8 @@ import { PrismaModule } from './prisma/prisma.module';
     HealthModule,
     PersonnelModule,
     OperationsModule,
+    OwnersModule,
+    BatchesModule,
   ],
   controllers: [
     AppController,
