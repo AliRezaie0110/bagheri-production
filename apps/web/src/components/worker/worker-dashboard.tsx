@@ -1153,7 +1153,7 @@ export function WorkerDashboard({
                         </span>
                       </div>
 
-                      <div className="grid gap-2 sm:grid-cols-2">
+                      <div className="grid max-h-[440px] gap-2 overflow-y-auto overscroll-contain pr-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:grid-cols-2 sm:max-h-[360px]">
                         {operations.map(
                           (
                             item,
