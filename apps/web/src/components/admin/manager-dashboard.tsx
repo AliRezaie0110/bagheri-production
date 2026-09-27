@@ -24,6 +24,14 @@ import {
 } from "@/components/layout/app-shell";
 
 import {
+  OperationsSection,
+} from "@/components/admin/operations-section";
+
+import {
+  OwnersSection,
+} from "@/components/admin/owners-section";
+
+import {
   PersonnelSection,
 } from "@/components/admin/personnel-section";
 
@@ -44,13 +52,6 @@ type Section =
 type NavItem = {
   id: Section;
   label: string;
-  icon: LucideIcon;
-};
-
-type OverviewCard = {
-  id: Section;
-  title: string;
-  description: string;
   icon: LucideIcon;
 };
 
@@ -121,102 +122,6 @@ const navItems: NavItem[] = [
   },
 ];
 
-const overviewCards: OverviewCard[] = [
-  {
-    id:
-      "personnel",
-    title:
-      "پرسنل",
-    description:
-      "ثبت، ویرایش و دسترسی نیروها",
-    icon:
-      UsersRound,
-  },
-  {
-    id:
-      "owners",
-    title:
-      "صاحبکارها",
-    description:
-      "مدیریت طرف‌های حساب",
-    icon:
-      BriefcaseBusiness,
-  },
-  {
-    id:
-      "operations",
-    title:
-      "عملیات تولید",
-    description:
-      "عملیات و نرخ‌های دانه‌ای",
-    icon:
-      Scissors,
-  },
-  {
-    id:
-      "batches",
-    title:
-      "سری‌کارها",
-    description:
-      "تعریف و کنترل تولید",
-    icon:
-      Boxes,
-  },
-];
-
-const upcomingLabels: Record<
-  Exclude<
-    Section,
-    "overview" | "personnel"
-  >,
-  {
-    title: string;
-    description: string;
-  }
-> = {
-  owners: {
-    title:
-      "صاحبکارها",
-    description:
-      "ثبت و مدیریت صاحبکارها در Stage 15B فعال می‌شود.",
-  },
-
-  operations: {
-    title:
-      "عملیات و نرخ‌ها",
-    description:
-      "مدیریت عملیات و تاریخچه نرخ‌ها در Stage 15B فعال می‌شود.",
-  },
-
-  batches: {
-    title:
-      "سری‌کارها",
-    description:
-      "ساخت سری و چک‌لیست عملیات در Stage 15B فعال می‌شود.",
-  },
-
-  approvals: {
-    title:
-      "تأییدها",
-    description:
-      "صف تأیید کار و ساعت در بخش بعدی پنل مدیر فعال می‌شود.",
-  },
-
-  accounts: {
-    title:
-      "حساب‌ها",
-    description:
-      "حساب کارکنان و صاحبکارها در بخش مالی فعال می‌شود.",
-  },
-
-  reports: {
-    title:
-      "گزارش‌ها",
-    description:
-      "گزارش‌های مالی و Excel در بخش گزارش‌ها فعال می‌شود.",
-  },
-};
-
 export function ManagerDashboard({
   user,
 }: {
@@ -229,16 +134,6 @@ export function ManagerDashboard({
     useState<Section>(
       "overview",
     );
-
-  const pendingSection =
-    section !==
-      "overview" &&
-    section !==
-      "personnel"
-      ? upcomingLabels[
-          section
-        ]
-      : null;
 
   return (
     <AppShell
@@ -274,7 +169,7 @@ export function ManagerDashboard({
                   }
                   className={`flex h-11 items-center gap-2 rounded-2xl px-4 text-xs font-black transition ${
                     active
-                      ? "bg-[var(--brand)] text-white shadow-[0_8px_20px_rgba(13,116,109,.16)]"
+                      ? "bg-[var(--brand)] text-white"
                       : "text-[var(--muted)] hover:bg-[var(--surface-soft)]"
                   }`}
                 >
@@ -290,7 +185,7 @@ export function ManagerDashboard({
       {section ===
         "overview" && (
         <section>
-          <div className="overflow-hidden rounded-[28px] bg-[#102827] p-6 text-white shadow-[0_18px_45px_rgba(16,40,39,.14)] sm:p-8">
+          <div className="overflow-hidden rounded-[28px] bg-[#102827] p-6 text-white sm:p-8">
             <p className="text-xs font-black text-emerald-200/70">
               مدیریت تولیدی باقری
             </p>
@@ -300,57 +195,66 @@ export function ManagerDashboard({
             </h2>
 
             <p className="mt-3 max-w-2xl text-xs leading-7 text-white/55">
-              پنل مدیر از این مرحله وارد حالت عملیاتی می‌شود. ابتدا مدیریت کامل پرسنل را می‌بندیم و سپس صاحبکار، عملیات، سری‌کار، حساب و گزارش‌ها روی همین ساختار اضافه می‌شوند.
+              پرسنل، صاحبکارها و عملیات تولید اکنون مستقیماً از همین پنل مدیریت می‌شوند.
             </p>
           </div>
 
           <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            {overviewCards.map(
-              (
-                card,
-              ) => {
-                const Icon =
-                  card.icon;
+            <OverviewButton
+              icon={
+                UsersRound
+              }
+              title="پرسنل"
+              description="ثبت و مدیریت نیروها"
+              onClick={
+                () =>
+                  setSection(
+                    "personnel",
+                  )
+              }
+            />
 
-                return (
-                  <button
-                    key={
-                      card.id
-                    }
-                    type="button"
-                    onClick={
-                      () =>
-                        setSection(
-                          card.id,
-                        )
-                    }
-                    className="rounded-[24px] border border-[var(--line)] bg-white p-5 text-right shadow-[0_6px_24px_rgba(15,23,42,.025)] transition hover:-translate-y-0.5 hover:border-slate-300"
-                  >
-                    <div className="flex size-10 items-center justify-center rounded-2xl bg-[var(--brand-soft)] text-[var(--brand)]">
-                      <Icon className="size-4" />
-                    </div>
+            <OverviewButton
+              icon={
+                BriefcaseBusiness
+              }
+              title="صاحبکارها"
+              description="ثبت طرف‌های تولید"
+              onClick={
+                () =>
+                  setSection(
+                    "owners",
+                  )
+              }
+            />
 
-                    <p className="mt-4 text-sm font-black">
-                      {card.title}
-                    </p>
+            <OverviewButton
+              icon={
+                Scissors
+              }
+              title="عملیات و نرخ"
+              description="کاتالوگ و تاریخچه نرخ"
+              onClick={
+                () =>
+                  setSection(
+                    "operations",
+                  )
+              }
+            />
 
-                    <p className="mt-1 text-[11px] leading-5 text-[var(--muted)]">
-                      {card.description}
-                    </p>
-                  </button>
-                );
-              },
-            )}
-          </div>
-
-          <div className="mt-4 rounded-[24px] border border-[var(--line)] bg-white p-5">
-            <p className="text-sm font-black">
-              وضعیت توسعه پنل
-            </p>
-
-            <p className="mt-2 text-xs leading-6 text-[var(--muted)]">
-              بخش پرسنل در همین Stage عملیاتی است. بقیه گزینه‌ها عمداً در منو حاضرند تا معماری نهایی پنل از همین حالا ثابت بماند و در Stageهای بعدی فقط محتوای واقعی آن‌ها اضافه شود.
-            </p>
+            <OverviewButton
+              icon={
+                Boxes
+              }
+              title="سری‌کارها"
+              description="مرحله بعدی پنل مدیر"
+              onClick={
+                () =>
+                  setSection(
+                    "batches",
+                  )
+              }
+            />
           </div>
         </section>
       )}
@@ -360,17 +264,103 @@ export function ManagerDashboard({
         <PersonnelSection />
       )}
 
-      {pendingSection && (
-        <section className="rounded-[28px] border border-dashed border-[var(--line-strong)] bg-white p-10 text-center">
-          <p className="text-base font-black">
-            {pendingSection.title}
-          </p>
+      {section ===
+        "owners" && (
+        <OwnersSection />
+      )}
 
-          <p className="mx-auto mt-2 max-w-md text-xs leading-6 text-[var(--muted)]">
-            {pendingSection.description}
-          </p>
-        </section>
+      {section ===
+        "operations" && (
+        <OperationsSection />
+      )}
+
+      {section ===
+        "batches" && (
+        <ComingSoon
+          title="سری‌کارها"
+          text="در Stage 15C ساخت سری‌کار و چک‌لیست عملیات واقعی می‌شود."
+        />
+      )}
+
+      {section ===
+        "approvals" && (
+        <ComingSoon
+          title="تأییدها"
+          text="صف تأیید کار و ساعت در مرحله مالی و مدیریتی بعدی متصل می‌شود."
+        />
+      )}
+
+      {section ===
+        "accounts" && (
+        <ComingSoon
+          title="حساب‌ها"
+          text="حساب کارکنان و صاحبکارها در مرحله بعدی پنل مدیر فعال می‌شود."
+        />
+      )}
+
+      {section ===
+        "reports" && (
+        <ComingSoon
+          title="گزارش‌ها"
+          text="گزارش‌ها و خروجی Excel به رابط مدیر متصل خواهند شد."
+        />
       )}
     </AppShell>
+  );
+}
+
+function OverviewButton({
+  icon: Icon,
+  title,
+  description,
+  onClick,
+}: {
+  icon:
+    LucideIcon;
+  title: string;
+  description: string;
+  onClick:
+    () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={
+        onClick
+      }
+      className="rounded-[24px] border border-[var(--line)] bg-white p-5 text-right transition hover:-translate-y-0.5 hover:border-slate-300"
+    >
+      <div className="flex size-10 items-center justify-center rounded-2xl bg-[var(--brand-soft)] text-[var(--brand)]">
+        <Icon className="size-4" />
+      </div>
+
+      <p className="mt-4 text-sm font-black">
+        {title}
+      </p>
+
+      <p className="mt-1 text-[11px] leading-5 text-[var(--muted)]">
+        {description}
+      </p>
+    </button>
+  );
+}
+
+function ComingSoon({
+  title,
+  text,
+}: {
+  title: string;
+  text: string;
+}) {
+  return (
+    <section className="rounded-[28px] border border-dashed border-[var(--line-strong)] bg-white p-10 text-center">
+      <p className="text-base font-black">
+        {title}
+      </p>
+
+      <p className="mx-auto mt-2 max-w-md text-xs leading-6 text-[var(--muted)]">
+        {text}
+      </p>
+    </section>
   );
 }

@@ -14,38 +14,6 @@ export type Pagination = {
   totalPages: number;
 };
 
-export type PersonnelItem = {
-  id: string;
-  phone: string;
-  fullName: string;
-  role: UserRole;
-  compensationType:
-    | "NONE"
-    | "PIECE_RATE"
-    | "FIXED_MONTHLY";
-  isActive: boolean;
-  defaultMonthlySalary:
-    | string
-    | null;
-  phoneVerifiedAt:
-    | string
-    | null;
-  createdAt: string;
-  updatedAt: string;
-};
-
-export type PersonnelListResponse = {
-  items: PersonnelItem[];
-  pagination: Pagination;
-};
-
-export type PersonnelInput = {
-  fullName: string;
-  phone: string;
-  role: UserRole;
-  defaultMonthlySalary?: string;
-};
-
 type QueryValue =
   | string
   | number
@@ -92,6 +60,50 @@ function queryPath(
     ? `${path}?${query}`
     : path;
 }
+
+// =========================================================
+// PERSONNEL
+// =========================================================
+
+export type PersonnelItem = {
+  id: string;
+  phone: string;
+  fullName: string;
+  role: UserRole;
+
+  compensationType:
+    | "NONE"
+    | "PIECE_RATE"
+    | "FIXED_MONTHLY";
+
+  isActive: boolean;
+
+  defaultMonthlySalary:
+    | string
+    | null;
+
+  phoneVerifiedAt:
+    | string
+    | null;
+
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type PersonnelListResponse = {
+  items:
+    PersonnelItem[];
+
+  pagination:
+    Pagination;
+};
+
+export type PersonnelInput = {
+  fullName: string;
+  phone: string;
+  role: UserRole;
+  defaultMonthlySalary?: string;
+};
 
 export function listPersonnel(
   params: {
@@ -170,6 +182,272 @@ export function setPersonnelActive(
   );
 }
 
+// =========================================================
+// OWNERS
+// =========================================================
+
+export type OwnerItem = {
+  id: string;
+  name: string;
+
+  phone:
+    | string
+    | null;
+
+  note:
+    | string
+    | null;
+
+  isActive: boolean;
+};
+
+export type OwnerListResponse = {
+  items:
+    OwnerItem[];
+};
+
+export type OwnerInput = {
+  name: string;
+  phone?: string;
+  note?: string;
+};
+
+export function listOwners(
+  params: {
+    q?: string;
+    isActive?: boolean;
+  } = {},
+): Promise<OwnerListResponse> {
+  return apiFetch<OwnerListResponse>(
+    queryPath(
+      "/admin/owners",
+      params,
+    ),
+    {
+      method:
+        "GET",
+      cache:
+        "no-store",
+    },
+  );
+}
+
+export function createOwner(
+  input:
+    OwnerInput,
+): Promise<OwnerItem> {
+  return apiFetch<OwnerItem>(
+    "/admin/owners",
+    {
+      method:
+        "POST",
+      body:
+        JSON.stringify(
+          input,
+        ),
+    },
+  );
+}
+
+export function updateOwner(
+  id: string,
+  input:
+    Partial<OwnerInput>,
+): Promise<OwnerItem> {
+  return apiFetch<OwnerItem>(
+    `/admin/owners/${id}`,
+    {
+      method:
+        "PATCH",
+      body:
+        JSON.stringify(
+          input,
+        ),
+    },
+  );
+}
+
+export function setOwnerActive(
+  id: string,
+  active: boolean,
+): Promise<OwnerItem> {
+  return apiFetch<OwnerItem>(
+    `/admin/owners/${id}/${
+      active
+        ? "activate"
+        : "deactivate"
+    }`,
+    {
+      method:
+        "POST",
+      body:
+        JSON.stringify({}),
+    },
+  );
+}
+
+// =========================================================
+// OPERATIONS + RATE HISTORY
+// =========================================================
+
+export type OperationItem = {
+  id: string;
+  name: string;
+  isActive: boolean;
+
+  currentRate:
+    | string
+    | null;
+
+  currentRateEffectiveFrom:
+    | string
+    | null;
+
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type OperationRateHistory = {
+  id: string;
+  amount: string;
+  effectiveFrom: string;
+
+  effectiveTo:
+    | string
+    | null;
+};
+
+export type OperationDetail =
+  OperationItem & {
+    rateHistory:
+      OperationRateHistory[];
+  };
+
+export type OperationsResponse = {
+  items:
+    OperationItem[];
+};
+
+export type OperationChecklistItem =
+  OperationItem & {
+    selected: boolean;
+  };
+
+export type OperationChecklistResponse = {
+  items:
+    OperationChecklistItem[];
+};
+
+export function listOperations(
+  includeInactive =
+    false,
+): Promise<OperationsResponse> {
+  return apiFetch<OperationsResponse>(
+    queryPath(
+      "/admin/operations",
+      {
+        includeInactive,
+      },
+    ),
+    {
+      method:
+        "GET",
+      cache:
+        "no-store",
+    },
+  );
+}
+
+export function getOperationChecklist(): Promise<OperationChecklistResponse> {
+  return apiFetch<OperationChecklistResponse>(
+    "/admin/operations/checklist",
+    {
+      method:
+        "GET",
+      cache:
+        "no-store",
+    },
+  );
+}
+
+export function getOperation(
+  id: string,
+): Promise<OperationDetail> {
+  return apiFetch<OperationDetail>(
+    `/admin/operations/${id}`,
+    {
+      method:
+        "GET",
+      cache:
+        "no-store",
+    },
+  );
+}
+
+export function createOperation(
+  input: {
+    name: string;
+    initialRate: string;
+  },
+): Promise<OperationItem> {
+  return apiFetch<OperationItem>(
+    "/admin/operations",
+    {
+      method:
+        "POST",
+      body:
+        JSON.stringify(
+          input,
+        ),
+    },
+  );
+}
+
+export function updateOperation(
+  id: string,
+  input: {
+    name?: string;
+    isActive?: boolean;
+  },
+): Promise<OperationItem> {
+  return apiFetch<OperationItem>(
+    `/admin/operations/${id}`,
+    {
+      method:
+        "PATCH",
+      body:
+        JSON.stringify(
+          input,
+        ),
+    },
+  );
+}
+
+export function changeOperationRate(
+  id: string,
+  amount: string,
+): Promise<{
+  operationId: string;
+  amount: string;
+  effectiveFrom: string;
+}> {
+  return apiFetch(
+    `/admin/operations/${id}/rates`,
+    {
+      method:
+        "POST",
+      body:
+        JSON.stringify({
+          amount,
+        }),
+    },
+  );
+}
+
+// =========================================================
+// ERROR MAPPING
+// =========================================================
+
 export function managerError(
   caught: unknown,
 ): string {
@@ -212,6 +490,27 @@ export function managerError(
       "PERSONNEL_NOT_FOUND"
     ) {
       return "پرسنل موردنظر پیدا نشد.";
+    }
+
+    if (
+      caught.code ===
+      "OWNER_NOT_FOUND"
+    ) {
+      return "صاحبکار موردنظر پیدا نشد.";
+    }
+
+    if (
+      caught.code ===
+      "OPERATION_ALREADY_EXISTS"
+    ) {
+      return "عملیاتی با این نام قبلاً ثبت شده است.";
+    }
+
+    if (
+      caught.code ===
+      "OPERATION_NOT_FOUND"
+    ) {
+      return "عملیات موردنظر پیدا نشد.";
     }
 
     return caught.message;
