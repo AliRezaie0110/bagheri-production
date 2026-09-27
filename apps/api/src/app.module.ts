@@ -10,6 +10,7 @@ import { RolesGuard } from './auth/guards/roles.guard';
 import { SessionAuthGuard } from './auth/guards/session-auth.guard';
 import { HealthModule } from './health/health.module';
 import { PersonnelModule } from './personnel/personnel.module';
+import { OperationsModule } from './operations/operations.module';
 import { PrismaModule } from './prisma/prisma.module';
 
 @Module({
@@ -31,6 +32,7 @@ import { PrismaModule } from './prisma/prisma.module';
     AuthModule,
     HealthModule,
     PersonnelModule,
+    OperationsModule,
   ],
   controllers: [
     AppController,
