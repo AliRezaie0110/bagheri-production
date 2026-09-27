@@ -24,6 +24,10 @@ import {
 } from "@/components/layout/app-shell";
 
 import {
+  BatchesSection,
+} from "@/components/admin/batches-section";
+
+import {
   OperationsSection,
 } from "@/components/admin/operations-section";
 
@@ -276,10 +280,7 @@ export function ManagerDashboard({
 
       {section ===
         "batches" && (
-        <ComingSoon
-          title="سری‌کارها"
-          text="در Stage 15C ساخت سری‌کار و چک‌لیست عملیات واقعی می‌شود."
-        />
+        <BatchesSection />
       )}
 
       {section ===

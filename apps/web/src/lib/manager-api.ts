@@ -445,6 +445,175 @@ export function changeOperationRate(
 }
 
 // =========================================================
+// WORK BATCHES
+// =========================================================
+
+export type BatchStatus =
+  | "ACTIVE"
+  | "COMPLETED"
+  | "CANCELLED"
+  | "ARCHIVED";
+
+export type OwnerPricingType =
+  | "PER_PIECE"
+  | "FIXED_TOTAL";
+
+export type BatchOperationItem = {
+  batchOperationId: string;
+  operationId: string;
+  name: string;
+  isOperationActive: boolean;
+  targetQuantity: number;
+  claimedQuantity: number;
+  approvedQuantity: number;
+  remainingQuantity: number;
+};
+
+export type WorkBatchItem = {
+  id: string;
+  code: string;
+
+  owner:
+    | {
+        id: string;
+        name: string;
+        isActive: boolean;
+      }
+    | null;
+
+  modelName: string;
+  totalQuantity: number;
+
+  ownerPricingType:
+    OwnerPricingType;
+
+  ownerUnitPrice:
+    | string
+    | null;
+
+  ownerFixedAmount:
+    | string
+    | null;
+
+  status:
+    BatchStatus;
+
+  startDate:
+    | string
+    | null;
+
+  completedAt:
+    | string
+    | null;
+
+  note:
+    | string
+    | null;
+
+  operations:
+    BatchOperationItem[];
+};
+
+export type WorkBatchListResponse = {
+  items:
+    WorkBatchItem[];
+
+  pagination:
+    Pagination;
+};
+
+export type CreateWorkBatchInput = {
+  code: string;
+  ownerId: string;
+  modelName: string;
+  totalQuantity: number;
+
+  ownerPricingType:
+    OwnerPricingType;
+
+  ownerUnitPrice?: string;
+  ownerFixedAmount?: string;
+  startDate?: string;
+  note?: string;
+
+  operations: Array<{
+    operationId: string;
+    targetQuantity?: number;
+  }>;
+};
+
+export function listBatches(
+  params: {
+    q?: string;
+    ownerId?: string;
+    status?: BatchStatus;
+    page?: number;
+    pageSize?: number;
+  } = {},
+): Promise<WorkBatchListResponse> {
+  return apiFetch<WorkBatchListResponse>(
+    queryPath(
+      "/admin/batches",
+      params,
+    ),
+    {
+      method:
+        "GET",
+      cache:
+        "no-store",
+    },
+  );
+}
+
+export function getBatch(
+  id: string,
+): Promise<WorkBatchItem> {
+  return apiFetch<WorkBatchItem>(
+    `/admin/batches/${id}`,
+    {
+      method:
+        "GET",
+      cache:
+        "no-store",
+    },
+  );
+}
+
+export function createWorkBatch(
+  input:
+    CreateWorkBatchInput,
+): Promise<WorkBatchItem> {
+  return apiFetch<WorkBatchItem>(
+    "/admin/batches",
+    {
+      method:
+        "POST",
+      body:
+        JSON.stringify(
+          input,
+        ),
+    },
+  );
+}
+
+export function changeBatchStatus(
+  id: string,
+  status:
+    BatchStatus,
+): Promise<WorkBatchItem> {
+  return apiFetch<WorkBatchItem>(
+    `/admin/batches/${id}/status`,
+    {
+      method:
+        "PATCH",
+      body:
+        JSON.stringify({
+          status,
+        }),
+    },
+  );
+}
+// =========================================================
 // ERROR MAPPING
 // =========================================================
 
@@ -511,6 +680,55 @@ export function managerError(
       "OPERATION_NOT_FOUND"
     ) {
       return "عملیات موردنظر پیدا نشد.";
+    }
+
+    if (
+      caught.code ===
+      "BATCH_NOT_FOUND"
+    ) {
+      return "سری‌کار موردنظر پیدا نشد.";
+    }
+
+    if (
+      caught.code ===
+      "BATCH_CODE_ALREADY_EXISTS"
+    ) {
+      return "این کد سری‌کار قبلاً ثبت شده است.";
+    }
+
+    if (
+      caught.code ===
+      "OWNER_NOT_ACTIVE"
+    ) {
+      return "صاحبکار انتخاب‌شده فعال نیست.";
+    }
+
+    if (
+      caught.code ===
+      "OWNER_UNIT_PRICE_REQUIRED"
+    ) {
+      return "برای قرارداد دانه‌ای، قیمت هر عدد الزامی است.";
+    }
+
+    if (
+      caught.code ===
+      "OWNER_FIXED_AMOUNT_REQUIRED"
+    ) {
+      return "برای قرارداد مبلغ ثابت، مبلغ کل الزامی است.";
+    }
+
+    if (
+      caught.code ===
+      "INVALID_BATCH_OPERATIONS"
+    ) {
+      return "یک یا چند عملیات انتخاب‌شده غیرفعال یا نامعتبر است.";
+    }
+
+    if (
+      caught.code ===
+      "DUPLICATE_BATCH_OPERATION"
+    ) {
+      return "یک عملیات بیش از یک بار در سری انتخاب شده است.";
     }
 
     return caught.message;
