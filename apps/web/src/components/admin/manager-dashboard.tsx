@@ -28,6 +28,10 @@ import {
 } from "@/components/admin/batches-section";
 
 import {
+  EmployeeAccountsSection,
+} from "@/components/admin/employee-accounts-section";
+
+import {
   OperationsSection,
 } from "@/components/admin/operations-section";
 
@@ -293,10 +297,7 @@ export function ManagerDashboard({
 
       {section ===
         "accounts" && (
-        <ComingSoon
-          title="حساب‌ها"
-          text="حساب کارکنان و صاحبکارها در مرحله بعدی پنل مدیر فعال می‌شود."
-        />
+        <EmployeeAccountsSection />
       )}
 
       {section ===

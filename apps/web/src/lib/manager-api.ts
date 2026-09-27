@@ -614,6 +614,424 @@ export function changeBatchStatus(
   );
 }
 // =========================================================
+// EMPLOYEE ACCOUNTS
+// =========================================================
+
+export type PaymentMethod =
+  | "CARD_TO_CARD"
+  | "BANK_TRANSFER"
+  | "CASH"
+  | "OTHER";
+
+export type EmployeeAccountSummary = {
+  id: string;
+  fullName: string;
+  phone: string;
+
+  role:
+    | "WORKER"
+    | "SUPERVISOR"
+    | "ASSISTANT";
+
+  compensationType:
+    | "PIECE_RATE"
+    | "FIXED_MONTHLY";
+
+  isActive: boolean;
+
+  defaultMonthlySalary:
+    | string
+    | null;
+
+  earned: string;
+  pending: string;
+  paid: string;
+  balance: string;
+
+  approvedWorkEntries: number;
+  pendingWorkEntries: number;
+};
+
+export type EmployeeAccountsResponse = {
+  items:
+    EmployeeAccountSummary[];
+
+  pagination:
+    Pagination;
+};
+
+export type EmployeePaymentItem = {
+  id: string;
+  amount: string;
+
+  paymentMethod:
+    PaymentMethod;
+
+  paidAt: string;
+
+  note:
+    | string
+    | null;
+
+  hasReceipt: boolean;
+
+  receiptOriginalName:
+    | string
+    | null;
+
+  recordedBy: {
+    id: string;
+    fullName: string;
+  };
+
+  createdAt: string;
+};
+
+export type EmployeeAccountDetail = {
+  employee: {
+    id: string;
+    fullName: string;
+    phone: string;
+
+    role:
+      | "WORKER"
+      | "SUPERVISOR"
+      | "ASSISTANT";
+
+    compensationType:
+      | "PIECE_RATE"
+      | "FIXED_MONTHLY";
+
+    isActive: boolean;
+
+    defaultMonthlySalary:
+      | string
+      | null;
+  };
+
+  totals: {
+    earned: string;
+    pending: string;
+    paid: string;
+    balance: string;
+    approvedWorkEntries: number;
+    pendingWorkEntries: number;
+  };
+
+  monthlySalaries: Array<{
+    id: string;
+    year: number;
+    month: number;
+    amount: string;
+
+    note:
+      | string
+      | null;
+  }>;
+
+  payments:
+    EmployeePaymentItem[];
+};
+
+export type RecordEmployeePaymentInput = {
+  amount: string;
+  paymentMethod:
+    PaymentMethod;
+
+  note?: string;
+
+  receipt?:
+    File;
+};
+
+export function listEmployeeAccounts(
+  params: {
+    q?: string;
+
+    role?:
+      | "WORKER"
+      | "SUPERVISOR"
+      | "ASSISTANT";
+
+    isActive?: boolean;
+
+    page?: number;
+    pageSize?: number;
+  } = {},
+): Promise<EmployeeAccountsResponse> {
+  return apiFetch<EmployeeAccountsResponse>(
+    queryPath(
+      "/admin/employee-accounts",
+      params,
+    ),
+    {
+      method:
+        "GET",
+
+      cache:
+        "no-store",
+    },
+  );
+}
+
+export function getEmployeeAccount(
+  employeeId: string,
+): Promise<EmployeeAccountDetail> {
+  return apiFetch<EmployeeAccountDetail>(
+    `/admin/employee-accounts/${employeeId}`,
+    {
+      method:
+        "GET",
+
+      cache:
+        "no-store",
+    },
+  );
+}
+
+const MANAGER_API_URL =
+  process.env.NEXT_PUBLIC_API_URL ??
+  "http://localhost:4000";
+
+async function managerRawFetch(
+  path: string,
+  init:
+    RequestInit,
+): Promise<Response> {
+  const response =
+    await fetch(
+      `${MANAGER_API_URL}${path}`,
+      {
+        ...init,
+
+        credentials:
+          "include",
+      },
+    );
+
+  if (
+    response.ok
+  ) {
+    return response;
+  }
+
+  let message =
+    `خطای سرور (${response.status})`;
+
+  try {
+    const payload =
+      await response.json() as {
+        message?:
+          | string
+          | string[];
+      };
+
+    if (
+      Array.isArray(
+        payload.message,
+      )
+    ) {
+      message =
+        payload.message.join(
+          "، ",
+        );
+    } else if (
+      typeof payload.message ===
+      "string"
+    ) {
+      message =
+        payload.message;
+    }
+  } catch {
+    // Response can be empty.
+  }
+
+  throw new Error(
+    message,
+  );
+}
+
+export async function recordEmployeePayment(
+  employeeId: string,
+  input:
+    RecordEmployeePaymentInput,
+): Promise<void> {
+  const form =
+    new FormData();
+
+  form.append(
+    "amount",
+    input.amount,
+  );
+
+  form.append(
+    "paymentMethod",
+    input.paymentMethod,
+  );
+
+  if (
+    input.note?.trim()
+  ) {
+    form.append(
+      "note",
+      input.note.trim(),
+    );
+  }
+
+  if (
+    input.receipt
+  ) {
+    form.append(
+      "receipt",
+      input.receipt,
+    );
+  }
+
+  await managerRawFetch(
+    `/admin/employee-accounts/${employeeId}/payments`,
+    {
+      method:
+        "POST",
+
+      body:
+        form,
+    },
+  );
+}
+
+async function fetchManagerReceipt(
+  paymentId: string,
+): Promise<Blob> {
+  const response =
+    await managerRawFetch(
+      `/admin/employee-accounts/payments/${paymentId}/receipt`,
+      {
+        method:
+          "GET",
+      },
+    );
+
+  return response.blob();
+}
+
+export async function openManagerEmployeeReceipt(
+  paymentId: string,
+): Promise<void> {
+  const blob =
+    await fetchManagerReceipt(
+      paymentId,
+    );
+
+  const url =
+    URL.createObjectURL(
+      blob,
+    );
+
+  window.open(
+    url,
+    "_blank",
+    "noopener,noreferrer",
+  );
+
+  window.setTimeout(
+    () => {
+      URL.revokeObjectURL(
+        url,
+      );
+    },
+    60_000,
+  );
+}
+
+export async function shareManagerEmployeeReceipt(
+  paymentId: string,
+  employeeName: string,
+): Promise<void> {
+  const blob =
+    await fetchManagerReceipt(
+      paymentId,
+    );
+
+  const extension =
+    blob.type ===
+    "application/pdf"
+      ? "pdf"
+      : blob.type ===
+          "image/png"
+        ? "png"
+        : "jpg";
+
+  const file =
+    new File(
+      [
+        blob,
+      ],
+      `receipt-${paymentId}.${extension}`,
+      {
+        type:
+          blob.type,
+      },
+    );
+
+  try {
+    if (
+      navigator.share
+    ) {
+      await navigator.share({
+        title:
+          `رسید پرداخت ${employeeName}`,
+
+        text:
+          `رسید پرداخت ${employeeName}`,
+
+        files: [
+          file,
+        ],
+      });
+
+      return;
+    }
+  } catch (
+    error
+  ) {
+    if (
+      error instanceof
+        DOMException &&
+      error.name ===
+        "AbortError"
+    ) {
+      return;
+    }
+  }
+
+  const url =
+    URL.createObjectURL(
+      blob,
+    );
+
+  const anchor =
+    document.createElement(
+      "a",
+    );
+
+  anchor.href =
+    url;
+
+  anchor.download =
+    `receipt-${paymentId}.${extension}`;
+
+  document.body.appendChild(
+    anchor,
+  );
+
+  anchor.click();
+  anchor.remove();
+
+  URL.revokeObjectURL(
+    url,
+  );
+}
+// =========================================================
 // ERROR MAPPING
 // =========================================================
 
@@ -731,6 +1149,14 @@ export function managerError(
       return "یک عملیات بیش از یک بار در سری انتخاب شده است.";
     }
 
+    return caught.message;
+  }
+
+  if (
+    caught instanceof
+    Error &&
+    caught.message
+  ) {
     return caught.message;
   }
 
