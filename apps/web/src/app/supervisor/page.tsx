@@ -3,15 +3,16 @@
 import {
   RoleGuard,
 } from "@/components/auth/role-guard";
+
 import {
-  RoleLanding,
-} from "@/components/dashboard/role-landing";
+  FixedSalaryDashboard,
+} from "@/components/staff/fixed-salary-dashboard";
 
 export default function SupervisorPage() {
   return (
     <RoleGuard role="SUPERVISOR">
       {(user) => (
-        <RoleLanding
+        <FixedSalaryDashboard
           user={user}
         />
       )}
