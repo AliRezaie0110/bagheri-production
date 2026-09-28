@@ -1019,7 +1019,10 @@ export function PersonnelSection() {
                     inputClass
                   }
                 >
-                  <option value="WORKER">
+                                    <option value="MANAGER">
+                    مدیر — دسترسی کامل
+                  </option>
+<option value="WORKER">
                     همکار — دانه‌ای
                   </option>
 
@@ -1085,7 +1088,10 @@ export function PersonnelSection() {
                   : form.role ===
                       "SUPERVISOR"
                     ? "فقط یک سرپرست فعال می‌تواند در سیستم وجود داشته باشد."
-                    : "وردست حقوق ثابت ماهانه دارد و ساعت کاری او توسط سرپرست تأیید می‌شود."}
+                    : form.role ===
+                        "MANAGER"
+                      ? "مدیر دسترسی کامل به پنل مدیریت، پرسنل، حساب‌ها، تأییدها و گزارش‌ها دارد."
+                      : "وردست حقوق ثابت ماهانه دارد و ساعت کاری او توسط سرپرست تأیید می‌شود."}
               </div>
 
               <button

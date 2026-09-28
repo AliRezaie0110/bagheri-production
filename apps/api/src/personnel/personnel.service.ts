@@ -241,10 +241,6 @@ export class PersonnelService {
     actorId: string,
     dto: CreatePersonnelDto,
   ) {
-    this.ensureManageableRole(
-      dto.role,
-    );
-
     const phone =
       normalizeIranianMobile(
         dto.phone,
