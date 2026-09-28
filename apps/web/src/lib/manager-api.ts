@@ -790,8 +790,10 @@ export function getEmployeeAccount(
 }
 
 const MANAGER_API_URL =
-  process.env.NEXT_PUBLIC_API_URL ??
-  "http://localhost:4000";
+  (
+    process.env.NEXT_PUBLIC_API_URL ??
+    "http://localhost:4000"
+  ).replace(/\/+$/, "");
 
 async function managerRawFetch(
   path: string,
@@ -800,7 +802,7 @@ async function managerRawFetch(
 ): Promise<Response> {
   const response =
     await fetch(
-      `${MANAGER_API_URL}${path}`,
+      `${MANAGER_API_URL}/api${path}`,
       {
         ...init,
 

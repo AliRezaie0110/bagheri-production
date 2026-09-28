@@ -150,15 +150,17 @@ export function getWorkerAccount(): Promise<EmployeeAccountResponse> {
   );
 }
 const EMPLOYEE_API_URL =
-  process.env.NEXT_PUBLIC_API_URL ??
-  "http://localhost:4000";
+  (
+    process.env.NEXT_PUBLIC_API_URL ??
+    "http://localhost:4000"
+  ).replace(/\/+$/, "");
 
 async function fetchEmployeeReceipt(
   paymentId: string,
 ): Promise<Blob> {
   const response =
     await fetch(
-      `${EMPLOYEE_API_URL}/employee-account/payments/${paymentId}/receipt`,
+      `${EMPLOYEE_API_URL}/api/employee-account/payments/${paymentId}/receipt`,
       {
         method:
           "GET",
