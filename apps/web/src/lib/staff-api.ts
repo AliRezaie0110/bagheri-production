@@ -56,7 +56,9 @@ export type SupervisorPendingWorkItem = {
   batchOperationId?: string;
   batchId?: string;
   batchCode?: string;
-  modelName?: string;
+  modelName?:
+    | string
+    | null;
   operationId?: string;
   operationName?: string;
 

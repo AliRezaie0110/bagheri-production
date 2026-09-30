@@ -598,8 +598,9 @@ export function BatchesSection() {
                     </div>
 
                     <p className="mt-1 text-xs text-[var(--muted)]">
-                      {batch.modelName}
-                      {" · "}
+                      {batch.modelName
+                        ? `${batch.modelName} · `
+                        : ""}
                       {batch.owner
                         ?.name ??
                         "صاحبکار نامشخص"}
@@ -1064,6 +1065,51 @@ function CreateBatchModal({
       ],
     );
 
+  const allOperationsSelected =
+    operations.length >
+      0 &&
+    operations.every(
+      (operation) =>
+        selected[
+          operation.id
+        ]?.selected,
+    );
+
+  function toggleAllOperations() {
+    setSelected(
+      (current) => {
+        const next = {
+          ...current,
+        };
+
+        for (
+          const operation of
+          operations
+        ) {
+          const previous =
+            next[
+              operation.id
+            ] ?? {
+              selected:
+                false,
+              target:
+                "",
+            };
+
+          next[
+            operation.id
+          ] = {
+            ...previous,
+            selected:
+              !allOperationsSelected,
+          };
+        }
+
+        return next;
+      },
+    );
+  }
+
   async function addInlineOperation() {
     if (
       !newOperationName.trim()
@@ -1173,7 +1219,6 @@ function CreateBatchModal({
     if (
       !code.trim() ||
       !ownerId ||
-      !modelName.trim() ||
       !Number.isInteger(
         quantity,
       ) ||
@@ -1181,7 +1226,7 @@ function CreateBatchModal({
         0
     ) {
       setError(
-        "کد سری، صاحبکار، مدل و تعداد کل را کامل کنید.",
+        "کد سری، صاحبکار و تعداد کل را کامل کنید.",
       );
 
       return;
@@ -1276,8 +1321,12 @@ function CreateBatchModal({
 
         ownerId,
 
-        modelName:
-          modelName.trim(),
+        ...(modelName.trim()
+          ? {
+              modelName:
+                modelName.trim(),
+            }
+          : {}),
 
         totalQuantity:
           quantity,
@@ -1493,7 +1542,7 @@ function CreateBatchModal({
                   </Field>
 
                   <Field
-                    label="مدل شلوار"
+                    label="مدل شلوار (اختیاری)"
                   >
                     <input
                       value={
@@ -1708,11 +1757,44 @@ function CreateBatchModal({
                     </p>
                   </div>
 
-                  <span className="shrink-0 rounded-full bg-[var(--brand-soft)] px-3 py-1.5 text-[10px] font-black text-[var(--brand)]">
-                    {faNumber(
-                      selectedCount,
-                    )} انتخاب
-                  </span>
+                  <div className="flex shrink-0 flex-col items-end gap-2 sm:flex-row sm:items-center">
+                    {operations.length >
+                      0 && (
+                      <button
+                        type="button"
+                        onClick={
+                          toggleAllOperations
+                        }
+                        className={`inline-flex h-9 items-center gap-2 rounded-xl border px-3 text-[10px] font-black transition ${
+                          allOperationsSelected
+                            ? "border-[var(--brand)] bg-[var(--brand)] text-white"
+                            : "border-[var(--line-strong)] bg-white text-[var(--text)] hover:border-[var(--brand)] hover:text-[var(--brand)]"
+                        }`}
+                      >
+                        <span
+                          className={`flex size-4 items-center justify-center rounded border ${
+                            allOperationsSelected
+                              ? "border-white/50 bg-white/15"
+                              : "border-slate-300 bg-white"
+                          }`}
+                        >
+                          {allOperationsSelected && (
+                            <Check className="size-3" />
+                          )}
+                        </span>
+
+                        {allOperationsSelected
+                          ? "لغو انتخاب همه"
+                          : "انتخاب همه"}
+                      </button>
+                    )}
+
+                    <span className="rounded-full bg-[var(--brand-soft)] px-3 py-1.5 text-[10px] font-black text-[var(--brand)]">
+                      {faNumber(
+                        selectedCount,
+                      )} انتخاب
+                    </span>
+                  </div>
                 </div>
 
                 {operations.length ===
@@ -1721,7 +1803,18 @@ function CreateBatchModal({
                     هنوز عملیات فعالی وجود ندارد. پایین همین فرم می‌توانید اولین عملیات را اضافه کنید.
                   </div>
                 ) : (
-                  <div className="grid gap-2 md:grid-cols-2">
+                  <div className="rounded-[22px] border border-slate-200 bg-slate-50/80 p-3 shadow-inner">
+                    <div className="mb-3 flex items-center justify-between gap-3 px-1">
+                      <p className="text-[10px] font-bold text-slate-500">
+                        لیست عملیات
+                      </p>
+
+                      <p className="text-[10px] text-slate-400">
+                        داخل این کادر اسکرول کنید
+                      </p>
+                    </div>
+
+                    <div className="grid max-h-[390px] gap-2 overflow-y-auto overscroll-contain pl-1 [scrollbar-gutter:stable] md:grid-cols-2">
                     {operations.map(
                       (
                         operation,
@@ -1847,6 +1940,7 @@ function CreateBatchModal({
                         );
                       },
                     )}
+                    </div>
                   </div>
                 )}
 

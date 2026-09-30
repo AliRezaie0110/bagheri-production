@@ -1252,7 +1252,7 @@ export class ReportsService {
 
             if (
               query.modelName &&
-              !batch.modelName
+              !(batch.modelName ?? "")
                 .toLocaleLowerCase()
                 .includes(
                   query.modelName

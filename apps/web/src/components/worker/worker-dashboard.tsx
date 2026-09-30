@@ -14,7 +14,6 @@ import {
   ChevronDown,
   ClipboardCheck,
   Clock3,
-  FileText,
   Eye,
   History,
   LoaderCircle,
@@ -152,36 +151,6 @@ function formatDate(
   }
 }
 
-function calculateAmount(
-  rate:
-    | string
-    | null,
-  quantity: string,
-): string {
-  if (
-    !rate ||
-    !quantity ||
-    !/^\d+$/.test(
-      quantity,
-    )
-  ) {
-    return "0";
-  }
-
-  try {
-    return (
-      BigInt(
-        rate,
-      ) *
-      BigInt(
-        quantity,
-      )
-    ).toString();
-  } catch {
-    return "0";
-  }
-}
-
 function getErrorMessage(
   error: unknown,
 ): string {
@@ -310,12 +279,6 @@ export function WorkerDashboard({
     useState("");
 
   const [
-    note,
-    setNote,
-  ] =
-    useState("");
-
-  const [
     submitting,
     setSubmitting,
   ] =
@@ -428,7 +391,9 @@ export function WorkerDashboard({
             {
               id: string;
               code: string;
-              modelName: string;
+              modelName:
+                | string
+                | null;
             }
           >();
 
@@ -564,13 +529,6 @@ export function WorkerDashboard({
     ],
   );
 
-  const amount =
-    calculateAmount(
-      selected?.currentRate ??
-        null,
-      quantity,
-    );
-
   const parsedQuantity =
     /^\d+$/.test(
       quantity,
@@ -592,7 +550,6 @@ export function WorkerDashboard({
   const canSubmit =
     Boolean(
       selected &&
-        selected.currentRate &&
         validQuantity &&
         !submitting,
     );
@@ -679,20 +636,9 @@ export function WorkerDashboard({
 
         quantity:
           parsedQuantity,
-
-        ...(note.trim()
-          ? {
-              workerNote:
-                note.trim(),
-            }
-          : {}),
       });
 
       setQuantity(
-        "",
-      );
-
-      setNote(
         "",
       );
 
@@ -729,29 +675,6 @@ export function WorkerDashboard({
         false,
       );
     }
-  }
-
-  function setQuickQuantity(
-    value: number,
-  ) {
-    if (
-      !selected
-    ) {
-      return;
-    }
-
-    setQuantity(
-      String(
-        Math.min(
-          value,
-          selected.remainingQuantity,
-        ),
-      ),
-    );
-
-    setSuccess(
-      null,
-    );
   }
 
   async function openReceipt(
@@ -1130,7 +1053,10 @@ export function WorkerDashboard({
                                   batch.id
                                 }
                               >
-                                {batch.code} — {batch.modelName}
+                                {batch.code}
+                                {batch.modelName
+                                  ? ` — ${batch.modelName}`
+                                  : ""}
                               </option>
                             ),
                           )}
@@ -1153,85 +1079,83 @@ export function WorkerDashboard({
                         </span>
                       </div>
 
-                      <div className="grid max-h-[380px] gap-2 overflow-y-auto overscroll-contain pr-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:grid-cols-2 sm:max-h-[360px]">
-                        {operations.map(
-                          (
-                            item,
-                          ) => {
-                            const active =
-                              item.batchOperationId ===
-                              selectedBatchOperationId;
+                      <div className="rounded-[24px] border border-slate-200 bg-slate-50/80 p-3 shadow-inner">
+                        <div className="mb-3 flex items-center justify-between gap-3 px-1">
+                          <p className="text-[10px] font-bold text-slate-500">
+                            عملیات‌های این سری
+                          </p>
 
-                            return (
-                              <button
-                                type="button"
-                                key={
-                                  item.batchOperationId
-                                }
-                                onClick={
-                                  () => {
-                                    setSelectedBatchOperationId(
-                                      item.batchOperationId,
-                                    );
+                          <p className="text-[10px] text-slate-400">
+                            داخل این کادر اسکرول کنید
+                          </p>
+                        </div>
 
-                                    setQuantity(
-                                      "",
-                                    );
+                        <div className="grid max-h-[380px] gap-2 overflow-y-auto overscroll-contain pl-1 [scrollbar-gutter:stable] sm:grid-cols-2 sm:max-h-[360px]">
+                          {operations.map(
+                            (
+                              item,
+                            ) => {
+                              const active =
+                                item.batchOperationId ===
+                                selectedBatchOperationId;
 
-                                    setSuccess(
-                                      null,
-                                    );
+                              return (
+                                <button
+                                  type="button"
+                                  key={
+                                    item.batchOperationId
                                   }
-                                }
-                                className={`rounded-[20px] border p-4 text-right transition ${
-                                  active
-                                    ? "border-[var(--brand)] bg-[var(--brand-soft)] ring-2 ring-[var(--brand)]/10"
-                                    : "border-[var(--line)] bg-white hover:border-slate-300"
-                                }`}
-                              >
-                                <div className="flex items-start justify-between gap-3">
-                                  <div>
-                                    <p className="text-sm font-black">
-                                      {item.operationName}
-                                    </p>
+                                  onClick={
+                                    () => {
+                                      setSelectedBatchOperationId(
+                                        item.batchOperationId,
+                                      );
 
-                                    <p className="mt-1 text-[11px] text-[var(--muted)]">
-                                      باقی‌مانده{" "}
-                                      <span className="font-black text-[var(--text)]">
-                                        {formatNumber(
-                                          item.remainingQuantity,
-                                        )}
-                                      </span>{" "}
-                                      عدد
-                                    </p>
+                                      setQuantity(
+                                        "",
+                                      );
+
+                                      setSuccess(
+                                        null,
+                                      );
+                                    }
+                                  }
+                                  className={`rounded-[20px] border p-4 text-right transition ${
+                                    active
+                                      ? "border-[var(--brand)] bg-white ring-2 ring-[var(--brand)]/10"
+                                      : "border-slate-200 bg-white/80 hover:border-slate-300"
+                                  }`}
+                                >
+                                  <div className="flex items-start justify-between gap-3">
+                                    <div>
+                                      <p className="text-sm font-black">
+                                        {item.operationName}
+                                      </p>
+
+                                      <p className="mt-1 text-[11px] text-[var(--muted)]">
+                                        باقی‌مانده{" "}
+                                        <span className="font-black text-[var(--text)]">
+                                          {formatNumber(
+                                            item.remainingQuantity,
+                                          )}
+                                        </span>{" "}
+                                        عدد
+                                      </p>
+                                    </div>
+
+                                    <span
+                                      className={`mt-1 size-3 rounded-full border-2 ${
+                                        active
+                                          ? "border-[var(--brand)] bg-[var(--brand)]"
+                                          : "border-slate-300 bg-white"
+                                      }`}
+                                    />
                                   </div>
-
-                                  <span
-                                    className={`mt-1 size-3 rounded-full border-2 ${
-                                      active
-                                        ? "border-[var(--brand)] bg-[var(--brand)]"
-                                        : "border-slate-300 bg-white"
-                                    }`}
-                                  />
-                                </div>
-
-                                <div className="mt-3 border-t border-black/[.05] pt-3 text-[11px]">
-                                  {item.currentRate ? (
-                                    <span className="font-black text-[var(--brand)]">
-                                      {money(
-                                        item.currentRate,
-                                      )} / عدد
-                                    </span>
-                                  ) : (
-                                    <span className="font-bold text-red-600">
-                                      نرخ تعیین نشده
-                                    </span>
-                                  )}
-                                </div>
-                              </button>
-                            );
-                          },
-                        )}
+                                </button>
+                              );
+                            },
+                          )}
+                        </div>
                       </div>
                     </div>
 
@@ -1318,53 +1242,6 @@ export function WorkerDashboard({
                             className="h-16 w-full rounded-2xl border border-[var(--line)] bg-white px-5 text-center text-2xl font-black outline-none transition placeholder:text-base placeholder:font-normal placeholder:text-slate-300 focus:border-[var(--brand)] focus:ring-4 focus:ring-[var(--brand-soft)]"
                           />
 
-                          <div className="mt-2 grid grid-cols-3 gap-2">
-                            {[
-                              {
-                                label:
-                                  "۱۰ عدد",
-                                value:
-                                  10,
-                              },
-                              {
-                                label:
-                                  "۵۰ عدد",
-                                value:
-                                  50,
-                              },
-                              {
-                                label:
-                                  "کل باقی‌مانده",
-                                value:
-                                  selected.remainingQuantity,
-                              },
-                            ].map(
-                              (
-                                quick,
-                              ) => (
-                                <button
-                                  type="button"
-                                  key={
-                                    quick.label
-                                  }
-                                  disabled={
-                                    selected.remainingQuantity <=
-                                    0
-                                  }
-                                  onClick={
-                                    () =>
-                                      setQuickQuantity(
-                                        quick.value,
-                                      )
-                                  }
-                                  className="min-h-10 rounded-xl border border-[var(--line)] bg-[var(--surface-soft)] px-2 text-[10px] font-black text-[var(--muted)] transition hover:border-[var(--brand)] hover:text-[var(--brand)] disabled:opacity-40 sm:text-xs"
-                                >
-                                  {quick.label}
-                                </button>
-                              ),
-                            )}
-                          </div>
-
                           {parsedQuantity >
                             selected.remainingQuantity && (
                             <p className="mt-2 text-xs font-bold text-red-600">
@@ -1375,73 +1252,6 @@ export function WorkerDashboard({
                               عدد است.
                             </p>
                           )}
-                        </div>
-
-                        <div className="rounded-[22px] border border-emerald-100 bg-emerald-50/70 p-4">
-                          <div className="flex items-center justify-between gap-3">
-                            <div>
-                              <p className="text-[11px] font-bold text-emerald-800/60">
-                                مبلغ این ثبت
-                              </p>
-
-                              <p className="mt-1 text-xl font-black text-emerald-800">
-                                {money(
-                                  amount,
-                                )}
-                              </p>
-                            </div>
-
-                            <div className="text-left">
-                              <p className="text-[10px] text-emerald-800/50">
-                                نرخ هر عدد
-                              </p>
-
-                              <p className="mt-1 text-xs font-black text-emerald-800">
-                                {selected.currentRate
-                                  ? money(
-                                      selected.currentRate,
-                                    )
-                                  : "بدون نرخ"}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div>
-                          <label
-                            htmlFor="worker-note"
-                            className="mb-2 flex items-center gap-2 text-xs font-black"
-                          >
-                            <FileText className="size-3.5 text-[var(--muted)]" />
-                            توضیح
-                            <span className="font-normal text-[var(--muted)]">
-                              اختیاری
-                            </span>
-                          </label>
-
-                          <textarea
-                            id="worker-note"
-                            maxLength={
-                              1000
-                            }
-                            rows={
-                              3
-                            }
-                            value={
-                              note
-                            }
-                            onChange={(
-                              event,
-                            ) =>
-                              setNote(
-                                event
-                                  .target
-                                  .value,
-                              )
-                            }
-                            placeholder="اگر نکته‌ای درباره این کار دارید بنویسید..."
-                            className="w-full resize-none rounded-2xl border border-[var(--line)] bg-white p-4 text-sm leading-7 outline-none transition placeholder:text-slate-300 focus:border-[var(--brand)] focus:ring-4 focus:ring-[var(--brand-soft)]"
-                          />
                         </div>
 
                         <button
@@ -1506,43 +1316,6 @@ export function WorkerDashboard({
                   </div>
                 </div>
 
-                <div className="rounded-[26px] border border-[var(--line)] bg-white p-5">
-                  <p className="text-sm font-black">
-                    روند ثبت کار
-                  </p>
-
-                  <div className="mt-5 space-y-4">
-                    {[
-                      "سری و عملیات را انتخاب کنید",
-                      "تعداد واقعی انجام‌شده را وارد کنید",
-                      "ثبت برای سرپرست ارسال می‌شود",
-                      "بعد از تأیید، مبلغ وارد حساب شما می‌شود",
-                    ].map(
-                      (
-                        text,
-                        index,
-                      ) => (
-                        <div
-                          key={
-                            text
-                          }
-                          className="flex items-start gap-3"
-                        >
-                          <div className="flex size-6 shrink-0 items-center justify-center rounded-full bg-[var(--brand-soft)] text-[10px] font-black text-[var(--brand)]">
-                            {formatNumber(
-                              index +
-                                1,
-                            )}
-                          </div>
-
-                          <p className="pt-0.5 text-xs leading-5 text-[var(--muted)]">
-                            {text}
-                          </p>
-                        </div>
-                      ),
-                    )}
-                  </div>
-                </div>
               </aside>
             </section>
           )}
@@ -1673,8 +1446,9 @@ export function WorkerDashboard({
                                 <span className="font-black text-[var(--text)]">
                                   {entry.batchCode}
                                 </span>
-                                {" · "}
-                                {entry.modelName}
+                                {entry.modelName
+                                  ? ` · ${entry.modelName}`
+                                  : ""}
                               </p>
                             </div>
 

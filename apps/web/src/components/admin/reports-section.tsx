@@ -1763,8 +1763,9 @@ function OwnerReports() {
                     }
                   >
                     {batch.code}
-                    {" — "}
-                    {batch.modelName}
+                    {batch.modelName
+                      ? ` — ${batch.modelName}`
+                      : ""}
                   </option>
                 ),
               )}
@@ -2282,8 +2283,9 @@ function OwnerBatchesTable({
 
                 <p className="mt-1 text-[10px] text-[var(--muted)]">
                   {batch.ownerName}
-                  {" · "}
-                  {batch.modelName}
+                  {batch.modelName
+                    ? ` · ${batch.modelName}`
+                    : ""}
                 </p>
               </div>
 

@@ -11,14 +11,15 @@ export type AvailableWorkItem = {
   batchOperationId: string;
   batchId: string;
   batchCode: string;
-  modelName: string;
+  modelName:
+    | string
+    | null;
   operationId: string;
   operationName: string;
   targetQuantity: number;
   claimedQuantity: number;
   approvedQuantity: number;
   remainingQuantity: number;
-  currentRate: string | null;
 };
 
 export type WorkerAvailableResponse = {
@@ -30,7 +31,9 @@ export type WorkerHistoryEntry = {
   batchOperationId: string;
   batchId: string;
   batchCode: string;
-  modelName: string;
+  modelName:
+    | string
+    | null;
   operationId: string;
   operationName: string;
   quantity: number;
@@ -111,7 +114,6 @@ export type EmployeeAccountResponse = {
 export type CreateWorkerEntryInput = {
   batchOperationId: string;
   quantity: number;
-  workerNote?: string;
 };
 
 export function getAvailableWork(): Promise<WorkerAvailableResponse> {

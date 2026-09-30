@@ -481,7 +481,9 @@ export type WorkBatchItem = {
       }
     | null;
 
-  modelName: string;
+  modelName:
+    | string
+    | null;
   totalQuantity: number;
 
   ownerPricingType:
@@ -525,7 +527,7 @@ export type WorkBatchListResponse = {
 export type CreateWorkBatchInput = {
   code: string;
   ownerId: string;
-  modelName: string;
+  modelName?: string;
   totalQuantity: number;
 
   ownerPricingType:
@@ -1048,7 +1050,9 @@ export type PendingWorkEntry = {
   batchOperationId: string;
   batchId: string;
   batchCode: string;
-  modelName: string;
+  modelName:
+    | string
+    | null;
   operationId: string;
   operationName: string;
 
@@ -1235,7 +1239,9 @@ export type OwnerAccountsResponse = {
 export type OwnerAccountBatch = {
   id: string;
   code: string;
-  modelName: string;
+  modelName:
+    | string
+    | null;
   totalQuantity: number;
 
   status:
@@ -1278,7 +1284,9 @@ export type OwnerPaymentItem = {
     | {
         id: string;
         code: string;
-        modelName: string;
+        modelName:
+          | string
+          | null;
       }
     | null;
 
@@ -1579,7 +1587,9 @@ export type OwnerReportBatch = {
   ownerName: string;
 
   code: string;
-  modelName: string;
+  modelName:
+    | string
+    | null;
 
   status:
     BatchStatus;

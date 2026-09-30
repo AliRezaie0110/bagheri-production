@@ -10,7 +10,6 @@ import {
 import {
   ArrowLeft,
   CheckCircle2,
-  Factory,
   KeyRound,
   LoaderCircle,
   LockKeyhole,
@@ -464,41 +463,36 @@ export function LoginForm() {
   return (
     <div className="w-full">
       <div className="mb-8">
-        <div className="mb-6 flex items-center gap-3 lg:hidden">
-          <div className="flex size-11 items-center justify-center rounded-2xl bg-[var(--brand)] text-white shadow-[0_10px_30px_rgba(13,116,109,.2)]">
-            <Factory className="size-5" />
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <div className="inline-flex items-center gap-2 rounded-full bg-[var(--brand-soft)] px-3 py-1.5 text-[10px] font-black text-[var(--brand)]">
+            <span className="size-1.5 rounded-full bg-[var(--brand)]" />
+            ورود امن پرسنل
           </div>
 
-          <div>
-            <p className="text-sm font-black text-[var(--text)]">
-              تولیدی باقری
-            </p>
-
-            <p className="mt-0.5 text-xs text-[var(--muted)]">
-              سامانه مدیریت تولید
-            </p>
-          </div>
-        </div>
-
-        <div className="mb-3 flex items-center gap-2 text-xs font-bold text-[var(--brand)]">
-          <span className="h-px w-6 bg-[var(--brand)]/40" />
-          ورود امن پرسنل
+          <span className="text-[10px] font-bold text-[var(--muted)]">
+            مرحله{" "}
+            {step ===
+            "phone"
+              ? "۱"
+              : "۲"}{" "}
+            از ۲
+          </span>
         </div>
 
         <h1 className="text-[28px] font-black leading-[1.45] tracking-[-0.03em] text-[var(--text)] sm:text-[32px]">
           {step ===
           "phone"
-            ? "ورود به پنل کاری"
-            : "کد تأیید را وارد کنید"}
+            ? "ورود با شماره موبایل"
+            : "کد پیامک‌شده را وارد کنید"}
         </h1>
 
         <p className="mt-3 max-w-md text-sm leading-7 text-[var(--muted)]">
           {step ===
           "phone"
-            ? "شماره موبایلی را وارد کنید که توسط مدیر تولیدی برای شما ثبت شده است."
+            ? "شماره‌ای را وارد کنید که در لیست پرسنل تولیدی ثبت شده است؛ کد ورود برای همان شماره پیامک می‌شود."
             : `کد ۶ رقمی برای ${formatPhone(
                 phone,
-              )} ارسال شد.`}
+              )} ارسال شده است.`}
         </p>
       </div>
 
@@ -526,6 +520,7 @@ export function LoginForm() {
                 type="tel"
                 inputMode="numeric"
                 autoComplete="tel"
+                autoFocus
                 dir="ltr"
                 value={
                   phone
@@ -546,7 +541,7 @@ export function LoginForm() {
                   );
                 }}
                 placeholder="09123456789"
-                className="h-14 w-full rounded-2xl border border-[var(--line)] bg-white pl-4 pr-12 text-left text-[17px] font-bold tracking-[0.04em] text-[var(--text)] outline-none transition placeholder:text-slate-300 focus:border-[var(--brand)] focus:ring-4 focus:ring-[var(--brand-soft)]"
+                className="h-16 w-full rounded-[20px] border border-[var(--line)] bg-white pl-4 pr-12 text-left text-[18px] font-black tracking-[0.04em] text-[var(--text)] outline-none transition placeholder:font-normal placeholder:text-slate-300 focus:border-[var(--brand)] focus:ring-4 focus:ring-[var(--brand-soft)]"
               />
             </div>
 
@@ -573,7 +568,7 @@ export function LoginForm() {
               !validPhone ||
               loading
             }
-            className="flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-[var(--brand)] px-5 text-sm font-black text-white shadow-[0_14px_34px_rgba(13,116,109,.20)] transition hover:bg-[var(--brand-strong)] disabled:cursor-not-allowed disabled:opacity-50"
+            className="flex h-15 w-full items-center justify-center gap-2 rounded-[20px] bg-[var(--brand)] px-5 text-sm font-black text-white shadow-[0_14px_34px_rgba(13,116,109,.20)] transition hover:bg-[var(--brand-strong)] disabled:cursor-not-allowed disabled:opacity-50"
           >
             {loading ? (
               <>
@@ -657,7 +652,7 @@ export function LoginForm() {
               !validCode ||
               loading
             }
-            className="flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-[var(--brand)] px-5 text-sm font-black text-white shadow-[0_14px_34px_rgba(13,116,109,.20)] transition hover:bg-[var(--brand-strong)] disabled:cursor-not-allowed disabled:opacity-50"
+            className="flex h-15 w-full items-center justify-center gap-2 rounded-[20px] bg-[var(--brand)] px-5 text-sm font-black text-white shadow-[0_14px_34px_rgba(13,116,109,.20)] transition hover:bg-[var(--brand-strong)] disabled:cursor-not-allowed disabled:opacity-50"
           >
             {loading ? (
               <>

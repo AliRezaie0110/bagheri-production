@@ -30,7 +30,7 @@ type BatchRecord = {
   id: string;
   code: string;
   ownerId: string;
-  modelName: string;
+  modelName: string | null;
   totalQuantity: number;
   ownerPricingType:
     OwnerPricingType;

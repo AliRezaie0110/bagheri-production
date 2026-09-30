@@ -77,6 +77,10 @@ type Tab =
   | SupervisorTab
   | AssistantTab;
 
+type TimeEntryMode =
+  | "delay"
+  | "worked";
+
 const statusMeta: Record<
   TimeEntryStatus,
   {
@@ -382,6 +386,46 @@ export function FixedSalaryDashboard({
     );
 
   const [
+    timeEntryMode,
+    setTimeEntryMode,
+  ] =
+    useState<TimeEntryMode>(
+      "delay",
+    );
+
+  const [
+    scheduledHours,
+    setScheduledHours,
+  ] =
+    useState(
+      "8",
+    );
+
+  const [
+    scheduledMinutes,
+    setScheduledMinutes,
+  ] =
+    useState(
+      "0",
+    );
+
+  const [
+    delayHours,
+    setDelayHours,
+  ] =
+    useState(
+      "0",
+    );
+
+  const [
+    delayMinutes,
+    setDelayMinutes,
+  ] =
+    useState(
+      "0",
+    );
+
+  const [
     hours,
     setHours,
   ] =
@@ -532,47 +576,88 @@ export function FixedSalaryDashboard({
     ],
   );
 
-  const totalMinutes =
+  const workedDirectMinutes =
     useMemo(
-      () => {
-        const h =
-          Number(
-            hours ||
-              0,
-          );
-
-        const m =
-          Number(
-            minutes ||
-              0,
-          );
-
-        if (
-          !Number.isFinite(
-            h,
-          ) ||
-          !Number.isFinite(
-            m,
-          )
-        ) {
-          return 0;
-        }
-
-        return (
-          h *
-            60 +
-          m
-        );
-      },
+      () =>
+        Number(
+          hours ||
+            0,
+        ) *
+          60 +
+        Number(
+          minutes ||
+            0,
+        ),
       [
         hours,
         minutes,
       ],
     );
 
+  const scheduledTotalMinutes =
+    useMemo(
+      () =>
+        Number(
+          scheduledHours ||
+            0,
+        ) *
+          60 +
+        Number(
+          scheduledMinutes ||
+            0,
+        ),
+      [
+        scheduledHours,
+        scheduledMinutes,
+      ],
+    );
+
+  const delayTotalMinutes =
+    useMemo(
+      () =>
+        Number(
+          delayHours ||
+            0,
+        ) *
+          60 +
+        Number(
+          delayMinutes ||
+            0,
+        ),
+      [
+        delayHours,
+        delayMinutes,
+      ],
+    );
+
+  const delayInvalid =
+    timeEntryMode ===
+      "delay" &&
+    (
+      scheduledTotalMinutes <=
+        0 ||
+      scheduledTotalMinutes >
+        1440 ||
+      delayTotalMinutes <
+        0 ||
+      delayTotalMinutes >
+        scheduledTotalMinutes
+    );
+
+  const totalMinutes =
+    timeEntryMode ===
+    "delay"
+      ? Math.max(
+          0,
+          scheduledTotalMinutes -
+            delayTotalMinutes,
+        )
+      : workedDirectMinutes;
+
   const canSubmitTime =
     Boolean(
       workDate &&
+        !delayInvalid &&
         totalMinutes >
           0 &&
         totalMinutes <=
@@ -632,16 +717,30 @@ export function FixedSalaryDashboard({
     );
 
     try {
+      const attendanceNote =
+        timeEntryMode ===
+        "delay"
+          ? `موظفی: ${formatMinutes(
+              scheduledTotalMinutes,
+            )} | تأخیر: ${formatMinutes(
+              delayTotalMinutes,
+            )}${
+              timeNote.trim()
+                ? ` | ${timeNote.trim()}`
+                : ""
+            }`
+          : timeNote.trim();
+
       await createMyTimeEntry({
         workDate,
 
         minutesWorked:
           totalMinutes,
 
-        ...(timeNote.trim()
+        ...(attendanceNote
           ? {
               note:
-                timeNote.trim(),
+                attendanceNote,
             }
           : {}),
       });
@@ -649,6 +748,19 @@ export function FixedSalaryDashboard({
       setTimeNote(
         "",
       );
+
+      if (
+        timeEntryMode ===
+        "delay"
+      ) {
+        setDelayHours(
+          "0",
+        );
+
+        setDelayMinutes(
+          "0",
+        );
+      }
 
       setSuccess(
         "ساعت کاری با موفقیت ثبت شد و برای تأیید ارسال شد.",
@@ -1512,137 +1624,331 @@ export function FixedSalaryDashboard({
                   </div>
                 </div>
 
-                <div className="mt-4 grid grid-cols-2 gap-3">
-                  <div>
-                    <label
-                      htmlFor="hours"
-                      className="mb-2 block text-xs font-black"
+                <div className="mt-5 rounded-[22px] border border-[var(--line)] bg-[var(--surface-soft)] p-2">
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={
+                        () =>
+                          setTimeEntryMode(
+                            "delay",
+                          )
+                      }
+                      className={`min-h-12 rounded-2xl px-3 text-xs font-black transition ${
+                        timeEntryMode ===
+                        "delay"
+                          ? "bg-[var(--brand)] text-white shadow-sm"
+                          : "bg-white text-[var(--muted)]"
+                      }`}
                     >
-                      ساعت
-                    </label>
+                      ثبت تأخیر
+                    </button>
 
-                    <input
-                      id="hours"
-                      type="number"
-                      min={
-                        0
+                    <button
+                      type="button"
+                      onClick={
+                        () =>
+                          setTimeEntryMode(
+                            "worked",
+                          )
                       }
-                      max={
-                        24
-                      }
-                      inputMode="numeric"
-                      dir="ltr"
-                      value={
-                        hours
-                      }
-                      onChange={(
-                        event,
-                      ) =>
-                        setHours(
-                          event
-                            .target
-                            .value,
-                        )
-                      }
-                      className="h-14 w-full rounded-2xl border border-[var(--line)] px-4 text-center text-lg font-black outline-none focus:border-[var(--brand)] focus:ring-4 focus:ring-[var(--brand-soft)]"
-                    />
-                  </div>
-
-                  <div>
-                    <label
-                      htmlFor="minutes"
-                      className="mb-2 block text-xs font-black"
+                      className={`min-h-12 rounded-2xl px-3 text-xs font-black transition ${
+                        timeEntryMode ===
+                        "worked"
+                          ? "bg-[var(--brand)] text-white shadow-sm"
+                          : "bg-white text-[var(--muted)]"
+                      }`}
                     >
-                      دقیقه
-                    </label>
-
-                    <input
-                      id="minutes"
-                      type="number"
-                      min={
-                        0
-                      }
-                      max={
-                        59
-                      }
-                      inputMode="numeric"
-                      dir="ltr"
-                      value={
-                        minutes
-                      }
-                      onChange={(
-                        event,
-                      ) =>
-                        setMinutes(
-                          event
-                            .target
-                            .value,
-                        )
-                      }
-                      className="h-14 w-full rounded-2xl border border-[var(--line)] px-4 text-center text-lg font-black outline-none focus:border-[var(--brand)] focus:ring-4 focus:ring-[var(--brand-soft)]"
-                    />
+                      ثبت کارکرد واقعی
+                    </button>
                   </div>
                 </div>
 
-                <div className="mt-3 grid grid-cols-3 gap-2">
-                  {[
-                    {
-                      label:
-                        "۴ ساعت",
-                      value:
-                        240,
-                    },
-                    {
-                      label:
-                        "۸ ساعت",
-                      value:
-                        480,
-                    },
-                    {
-                      label:
-                        "۱۰ ساعت",
-                      value:
-                        600,
-                    },
-                  ].map(
-                    (
-                      quick,
-                    ) => (
-                      <button
-                        type="button"
-                        key={
-                          quick.value
-                        }
-                        onClick={
-                          () => {
-                            setHours(
-                              String(
-                                Math.floor(
-                                  quick.value /
-                                    60,
-                                ),
-                              ),
-                            );
+                {timeEntryMode ===
+                "delay" ? (
+                  <div className="mt-4 space-y-4">
+                    <div className="rounded-[22px] border border-slate-200 bg-slate-50 p-4">
+                      <div className="mb-3">
+                        <p className="text-xs font-black">
+                          ساعت موظفی آن روز
+                        </p>
 
-                            setMinutes(
-                              String(
-                                quick.value %
-                                  60,
-                              ),
-                            );
+                        <p className="mt-1 text-[10px] leading-5 text-[var(--muted)]">
+                          پیش‌فرض ۸ ساعت است؛ برای روزهای متفاوت می‌توانید تغییرش دهید.
+                        </p>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label
+                            htmlFor="scheduled-hours"
+                            className="mb-2 block text-[10px] font-black text-[var(--muted)]"
+                          >
+                            ساعت
+                          </label>
+
+                          <input
+                            id="scheduled-hours"
+                            type="number"
+                            min={0}
+                            max={24}
+                            inputMode="numeric"
+                            dir="ltr"
+                            value={
+                              scheduledHours
+                            }
+                            onChange={(
+                              event,
+                            ) =>
+                              setScheduledHours(
+                                event
+                                  .target
+                                  .value,
+                              )
+                            }
+                            className="h-13 w-full rounded-2xl border border-[var(--line)] bg-white px-4 text-center text-lg font-black outline-none focus:border-[var(--brand)] focus:ring-4 focus:ring-[var(--brand-soft)]"
+                          />
+                        </div>
+
+                        <div>
+                          <label
+                            htmlFor="scheduled-minutes"
+                            className="mb-2 block text-[10px] font-black text-[var(--muted)]"
+                          >
+                            دقیقه
+                          </label>
+
+                          <input
+                            id="scheduled-minutes"
+                            type="number"
+                            min={0}
+                            max={59}
+                            inputMode="numeric"
+                            dir="ltr"
+                            value={
+                              scheduledMinutes
+                            }
+                            onChange={(
+                              event,
+                            ) =>
+                              setScheduledMinutes(
+                                event
+                                  .target
+                                  .value,
+                              )
+                            }
+                            className="h-13 w-full rounded-2xl border border-[var(--line)] bg-white px-4 text-center text-lg font-black outline-none focus:border-[var(--brand)] focus:ring-4 focus:ring-[var(--brand-soft)]"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="rounded-[22px] border border-amber-100 bg-amber-50/70 p-4">
+                      <div className="mb-3">
+                        <p className="text-xs font-black text-amber-900">
+                          میزان تأخیر
+                        </p>
+
+                        <p className="mt-1 text-[10px] leading-5 text-amber-800/60">
+                          فقط مقدار تأخیر را وارد کنید؛ کارکرد نهایی خودکار حساب می‌شود.
+                        </p>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label
+                            htmlFor="delay-hours"
+                            className="mb-2 block text-[10px] font-black text-amber-900/60"
+                          >
+                            ساعت
+                          </label>
+
+                          <input
+                            id="delay-hours"
+                            type="number"
+                            min={0}
+                            max={24}
+                            inputMode="numeric"
+                            dir="ltr"
+                            value={
+                              delayHours
+                            }
+                            onChange={(
+                              event,
+                            ) =>
+                              setDelayHours(
+                                event
+                                  .target
+                                  .value,
+                              )
+                            }
+                            className="h-13 w-full rounded-2xl border border-amber-100 bg-white px-4 text-center text-lg font-black outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-100"
+                          />
+                        </div>
+
+                        <div>
+                          <label
+                            htmlFor="delay-minutes"
+                            className="mb-2 block text-[10px] font-black text-amber-900/60"
+                          >
+                            دقیقه
+                          </label>
+
+                          <input
+                            id="delay-minutes"
+                            type="number"
+                            min={0}
+                            max={59}
+                            inputMode="numeric"
+                            dir="ltr"
+                            value={
+                              delayMinutes
+                            }
+                            onChange={(
+                              event,
+                            ) =>
+                              setDelayMinutes(
+                                event
+                                  .target
+                                  .value,
+                              )
+                            }
+                            className="h-13 w-full rounded-2xl border border-amber-100 bg-white px-4 text-center text-lg font-black outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-100"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <div className="mt-4 grid grid-cols-2 gap-3">
+                      <div>
+                        <label
+                          htmlFor="hours"
+                          className="mb-2 block text-xs font-black"
+                        >
+                          ساعت کارکرد
+                        </label>
+
+                        <input
+                          id="hours"
+                          type="number"
+                          min={0}
+                          max={24}
+                          inputMode="numeric"
+                          dir="ltr"
+                          value={
+                            hours
                           }
-                        }
-                        className="h-10 rounded-xl border border-[var(--line)] bg-[var(--surface-soft)] text-xs font-black text-[var(--muted)] hover:border-[var(--brand)] hover:text-[var(--brand)]"
-                      >
-                        {quick.label}
-                      </button>
-                    ),
-                  )}
-                </div>
+                          onChange={(
+                            event,
+                          ) =>
+                            setHours(
+                              event
+                                .target
+                                .value,
+                            )
+                          }
+                          className="h-14 w-full rounded-2xl border border-[var(--line)] px-4 text-center text-lg font-black outline-none focus:border-[var(--brand)] focus:ring-4 focus:ring-[var(--brand-soft)]"
+                        />
+                      </div>
+
+                      <div>
+                        <label
+                          htmlFor="minutes"
+                          className="mb-2 block text-xs font-black"
+                        >
+                          دقیقه
+                        </label>
+
+                        <input
+                          id="minutes"
+                          type="number"
+                          min={0}
+                          max={59}
+                          inputMode="numeric"
+                          dir="ltr"
+                          value={
+                            minutes
+                          }
+                          onChange={(
+                            event,
+                          ) =>
+                            setMinutes(
+                              event
+                                .target
+                                .value,
+                            )
+                          }
+                          className="h-14 w-full rounded-2xl border border-[var(--line)] px-4 text-center text-lg font-black outline-none focus:border-[var(--brand)] focus:ring-4 focus:ring-[var(--brand-soft)]"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="mt-3 grid grid-cols-3 gap-2">
+                      {[
+                        {
+                          label:
+                            "۴ ساعت",
+                          value:
+                            240,
+                        },
+                        {
+                          label:
+                            "۸ ساعت",
+                          value:
+                            480,
+                        },
+                        {
+                          label:
+                            "۱۰ ساعت",
+                          value:
+                            600,
+                        },
+                      ].map(
+                        (
+                          quick,
+                        ) => (
+                          <button
+                            type="button"
+                            key={
+                              quick.value
+                            }
+                            onClick={
+                              () => {
+                                setHours(
+                                  String(
+                                    Math.floor(
+                                      quick.value /
+                                        60,
+                                    ),
+                                  ),
+                                );
+
+                                setMinutes(
+                                  String(
+                                    quick.value %
+                                      60,
+                                  ),
+                                );
+                              }
+                            }
+                            className="h-10 rounded-xl border border-[var(--line)] bg-[var(--surface-soft)] text-xs font-black text-[var(--muted)] hover:border-[var(--brand)] hover:text-[var(--brand)]"
+                          >
+                            {quick.label}
+                          </button>
+                        ),
+                      )}
+                    </div>
+                  </>
+                )}
 
                 <div className="mt-4 rounded-2xl bg-emerald-50 p-4">
                   <p className="text-[10px] text-emerald-700/60">
-                    مجموع ساعت ثبت
+                    {timeEntryMode ===
+                    "delay"
+                      ? "کارکرد محاسبه‌شده"
+                      : "مجموع ساعت ثبت"}
                   </p>
 
                   <p className="mt-1 text-base font-black text-emerald-800">
@@ -1653,10 +1959,31 @@ export function FixedSalaryDashboard({
                       ),
                     )}
                   </p>
+
+                  {timeEntryMode ===
+                    "delay" && (
+                    <p className="mt-2 text-[10px] leading-5 text-emerald-800/60">
+                      {formatMinutes(
+                        scheduledTotalMinutes,
+                      )} موظفی
+                      {" − "}
+                      {formatMinutes(
+                        delayTotalMinutes,
+                      )} تأخیر
+                    </p>
+                  )}
                 </div>
 
-                {totalMinutes >
-                  1440 && (
+                {delayInvalid && (
+                  <p className="mt-2 text-xs font-bold text-red-600">
+                    تأخیر نمی‌تواند از ساعت موظفی بیشتر باشد و ساعت موظفی باید حداکثر ۲۴ ساعت باشد.
+                  </p>
+                )}
+
+                {timeEntryMode ===
+                  "worked" &&
+                  totalMinutes >
+                    1440 && (
                   <p className="mt-2 text-xs font-bold text-red-600">
                     مدت کار نمی‌تواند بیشتر از ۲۴ ساعت باشد.
                   </p>

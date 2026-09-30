@@ -152,73 +152,34 @@ export class WorkEntriesService {
         },
       });
 
-    const today =
-      this.today();
-
     const items =
-      await Promise.all(
-        batchOperations.map(
-          async (item) => {
-            const rate =
-              await this.prisma.operationRate.findFirst({
-                where: {
-                  operationId:
-                    item.operationId,
-                  effectiveFrom: {
-                    lte:
-                      today,
-                  },
-                  OR: [
-                    {
-                      effectiveTo:
-                        null,
-                    },
-                    {
-                      effectiveTo: {
-                        gte:
-                          today,
-                      },
-                    },
-                  ],
-                },
-                orderBy: {
-                  effectiveFrom:
-                    'desc',
-                },
-              });
-
-            return {
-              batchOperationId:
-                item.id,
-              batchId:
-                item.workBatchId,
-              batchCode:
-                item.workBatch.code,
-              modelName:
-                item.workBatch.modelName,
-              operationId:
-                item.operationId,
-              operationName:
-                item.operation.name,
-              targetQuantity:
-                item.targetQuantity,
-              claimedQuantity:
+      batchOperations.map(
+        (item) => ({
+          batchOperationId:
+            item.id,
+          batchId:
+            item.workBatchId,
+          batchCode:
+            item.workBatch.code,
+          modelName:
+            item.workBatch.modelName,
+          operationId:
+            item.operationId,
+          operationName:
+            item.operation.name,
+          targetQuantity:
+            item.targetQuantity,
+          claimedQuantity:
+            item.claimedQuantity,
+          approvedQuantity:
+            item.approvedQuantity,
+          remainingQuantity:
+            Math.max(
+              0,
+              item.targetQuantity -
                 item.claimedQuantity,
-              approvedQuantity:
-                item.approvedQuantity,
-              remainingQuantity:
-                Math.max(
-                  0,
-                  item.targetQuantity -
-                    item.claimedQuantity,
-                ),
-              currentRate:
-                rate
-                  ? rate.amount.toString()
-                  : null,
-            };
-          },
-        ),
+            ),
+        }),
       );
 
     return {

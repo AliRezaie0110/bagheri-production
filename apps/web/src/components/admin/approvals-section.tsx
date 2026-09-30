@@ -683,8 +683,9 @@ function WorkApprovals({
 
                 <p className="mt-1 text-xs text-[var(--muted)]">
                   {entry.batchCode}
-                  {" · "}
-                  {entry.modelName}
+                  {entry.modelName
+                    ? ` · ${entry.modelName}`
+                    : ""}
                   {" · "}
                   {entry.operationName}
                 </p>

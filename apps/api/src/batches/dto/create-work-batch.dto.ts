@@ -28,9 +28,10 @@ export class CreateWorkBatchDto {
   @IsString()
   ownerId!: string;
 
+  @IsOptional()
   @IsString()
   @MaxLength(150)
-  modelName!: string;
+  modelName?: string;
 
   @IsInt()
   @Min(1)

@@ -100,7 +100,7 @@ export class BatchesService {
       id: string;
       code: string;
       ownerId: string;
-      modelName: string;
+      modelName: string | null;
       totalQuantity: number;
       ownerPricingType:
         OwnerPricingType;
@@ -442,7 +442,8 @@ export class BatchesService {
                   ownerId:
                     dto.ownerId,
                   modelName:
-                    dto.modelName.trim(),
+                    dto.modelName?.trim() ||
+                    null,
                   totalQuantity:
                     dto.totalQuantity,
                   ownerPricingType:

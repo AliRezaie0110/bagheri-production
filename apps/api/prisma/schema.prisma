@@ -130,7 +130,7 @@ model WorkBatch {
   ownerId String
   owner   Owner  @relation(fields: [ownerId], references: [id])
 
-  modelName     String
+  modelName     String?
   totalQuantity Int
 
   ownerPricingType OwnerPricingType

@@ -835,8 +835,9 @@ export function OwnerAccountsSection() {
                                 </p>
 
                                 <p className="mt-1 text-[10px] text-[var(--muted)]">
-                                  {batch.modelName}
-                                  {" · "}
+                                  {batch.modelName
+                                    ? `${batch.modelName} · `
+                                    : ""}
                                   {number(
                                     batch.totalQuantity,
                                   )} عدد
