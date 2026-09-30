@@ -1079,7 +1079,7 @@ export function WorkerDashboard({
                         </span>
                       </div>
 
-                      <div className="rounded-[24px] border border-slate-200 bg-slate-50/80 p-3 shadow-inner">
+                      <div className="rounded-[24px] border border-slate-200 bg-slate-100 p-3 shadow-inner">
                         <div className="mb-3 flex items-center justify-between gap-3 px-1">
                           <p className="text-[10px] font-bold text-slate-500">
                             عملیات‌های این سری
@@ -1090,7 +1090,7 @@ export function WorkerDashboard({
                           </p>
                         </div>
 
-                        <div className="grid max-h-[380px] gap-2 overflow-y-auto overscroll-contain pl-1 [scrollbar-gutter:stable] sm:grid-cols-2 sm:max-h-[360px]">
+                        <div className="grid max-h-[250px] gap-2 overflow-y-auto overscroll-contain pl-1 [scrollbar-gutter:stable] sm:grid-cols-2 sm:max-h-[240px]">
                           {operations.map(
                             (
                               item,
