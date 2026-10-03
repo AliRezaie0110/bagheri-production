@@ -5,9 +5,9 @@ import { JalaliDateInput } from "@/components/ui/jalali-date-input";
 import {
   Boxes,
   Check,
-  CircleDollarSign,
   LoaderCircle,
   PackagePlus,
+  Pencil,
   Plus,
   RefreshCw,
   Search,
@@ -29,13 +29,14 @@ import {
   createOperation,
   createWorkBatch,
   CreateWorkBatchInput,
-  getOperationChecklist,
   listBatches,
+  listOperations,
   listOwners,
   managerError,
   OperationChecklistItem,
   OwnerItem,
   OwnerPricingType,
+  updateWorkBatch,
   WorkBatchItem,
 } from "@/lib/manager-api";
 
@@ -69,6 +70,16 @@ type SelectedOperations =
     string,
     SelectedOperation
   >;
+
+type EditableSize = {
+  key: string;
+  label: string;
+  quantity: string;
+};
+
+function newSizeKey(): string {
+  return `size-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
 
 function faNumber(
   value:
@@ -212,6 +223,14 @@ export function BatchesSection() {
   ] =
     useState(
       false,
+    );
+
+  const [
+    editingBatch,
+    setEditingBatch,
+  ] =
+    useState<WorkBatchItem | null>(
+      null,
     );
 
   const load =
@@ -607,38 +626,32 @@ export function BatchesSection() {
                     </p>
                   </div>
 
-                  <select
-                    value={
-                      batch.status
-                    }
-                    onChange={(
-                      event,
-                    ) => {
-                      void updateStatus(
-                        batch,
-                        event.target
-                          .value as
-                          BatchStatus,
-                      );
-                    }}
-                    className="h-10 rounded-xl border border-[var(--line)] bg-white px-3 text-[11px] font-black outline-none"
-                  >
-                    <option value="ACTIVE">
-                      فعال
-                    </option>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setEditingBatch(batch)}
+                      className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-[var(--line)] bg-white px-3 text-[11px] font-black text-[var(--brand)]"
+                    >
+                      <Pencil className="size-3.5" />
+                      ویرایش
+                    </button>
 
-                    <option value="COMPLETED">
-                      تکمیل‌شده
-                    </option>
-
-                    <option value="CANCELLED">
-                      لغوشده
-                    </option>
-
-                    <option value="ARCHIVED">
-                      بایگانی
-                    </option>
-                  </select>
+                    <select
+                      value={batch.status}
+                      onChange={(event) => {
+                        void updateStatus(
+                          batch,
+                          event.target.value as BatchStatus,
+                        );
+                      }}
+                      className="h-10 rounded-xl border border-[var(--line)] bg-white px-3 text-[11px] font-black outline-none"
+                    >
+                      <option value="ACTIVE">فعال</option>
+                      <option value="COMPLETED">تکمیل‌شده</option>
+                      <option value="CANCELLED">لغوشده</option>
+                      <option value="ARCHIVED">بایگانی</option>
+                    </select>
+                  </div>
                 </div>
 
                 <div className="mt-4 grid grid-cols-2 gap-2 rounded-2xl bg-[var(--surface-soft)] p-3 sm:grid-cols-4">
@@ -685,6 +698,24 @@ export function BatchesSection() {
                   />
                 </div>
 
+                <div className="mt-3 rounded-2xl border border-[var(--line)] p-3">
+                  <p className="text-[9px] font-black text-[var(--muted)]">
+                    سایزبندی سری
+                  </p>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {(batch.sizes ?? [])
+                      .filter((size) => size.isActive)
+                      .map((size) => (
+                        <span
+                          key={size.id}
+                          className="rounded-xl bg-[var(--surface-soft)] px-3 py-2 text-[10px] font-black"
+                        >
+                          سایز {size.label}: {faNumber(size.quantity)} عدد
+                        </span>
+                      ))}
+                  </div>
+                </div>
+
                 {batch.note && (
                   <div className="mt-3 rounded-2xl border border-[var(--line)] p-3">
                     <p className="text-[9px] font-black text-[var(--muted)]">
@@ -703,7 +734,9 @@ export function BatchesSection() {
                   </p>
 
                   <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
-                    {batch.operations.map(
+                    {batch.operations
+                      .filter((operation) => operation.isBatchOperationActive)
+                      .map(
                       (
                         operation,
                       ) => {
@@ -795,653 +828,376 @@ export function BatchesSection() {
         </div>
       )}
 
-      <CreateBatchModal
-        open={
-          createOpen
-        }
-        onClose={
-          () =>
-            setCreateOpen(
-              false,
-            )
-        }
-        onCreated={
-          async () => {
-            setCreateOpen(
-              false,
-            );
+      <BatchModal
+        open={createOpen}
+        batch={null}
+        onClose={() => setCreateOpen(false)}
+        onSaved={async () => {
+          setCreateOpen(false);
+          await load(true);
+        }}
+      />
 
-            await load(
-              true,
-            );
-          }
-        }
+      <BatchModal
+        open={Boolean(editingBatch)}
+        batch={editingBatch}
+        onClose={() => setEditingBatch(null)}
+        onSaved={async () => {
+          setEditingBatch(null);
+          await load(true);
+        }}
       />
     </section>
   );
 }
 
-function CreateBatchModal({
+function BatchModal({
   open,
+  batch,
   onClose,
-  onCreated,
+  onSaved,
 }: {
   open: boolean;
-
-  onClose:
-    () => void;
-
-  onCreated:
-    () => Promise<void>;
+  batch: WorkBatchItem | null;
+  onClose: () => void;
+  onSaved: () => Promise<void>;
 }) {
-  const [
-    owners,
-    setOwners,
-  ] =
-    useState<
-      OwnerItem[]
-    >([]);
+  const [owners, setOwners] = useState<OwnerItem[]>([]);
+  const [operations, setOperations] = useState<OperationChecklistItem[]>([]);
+  const [selected, setSelected] = useState<SelectedOperations>({});
+  const [sizes, setSizes] = useState<EditableSize[]>([]);
+  const [optionsLoading, setOptionsLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [addingOperation, setAddingOperation] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [code, setCode] = useState("");
+  const [ownerId, setOwnerId] = useState("");
+  const [modelName, setModelName] = useState("");
+  const [totalQuantity, setTotalQuantity] = useState("");
+  const [pricingType, setPricingType] = useState<OwnerPricingType>("PER_PIECE");
+  const [price, setPrice] = useState("");
+  const [startDate, setStartDate] = useState(localToday());
+  const [note, setNote] = useState("");
+  const [newOperationName, setNewOperationName] = useState("");
+  const [newOperationRate, setNewOperationRate] = useState("");
 
-  const [
-    operations,
-    setOperations,
-  ] =
-    useState<
-      OperationChecklistItem[]
-    >([]);
+  const loadOptions = useCallback(async () => {
+    setOptionsLoading(true);
+    setError(null);
 
-  const [
-    selected,
-    setSelected,
-  ] =
-    useState<SelectedOperations>(
-      {},
-    );
+    try {
+      const [ownerResponse, operationResponse] = await Promise.all([
+        listOwners(),
+        listOperations(Boolean(batch)),
+      ]);
 
-  const [
-    optionsLoading,
-    setOptionsLoading,
-  ] =
-    useState(
-      false,
-    );
+      setOwners(
+        ownerResponse.items.filter(
+          (owner) => owner.isActive || owner.id === batch?.owner?.id,
+        ),
+      );
 
-  const [
-    saving,
-    setSaving,
-  ] =
-    useState(
-      false,
-    );
+      const attachedIds = new Set(
+        batch?.operations.map((item) => item.operationId) ?? [],
+      );
 
-  const [
-    addingOperation,
-    setAddingOperation,
-  ] =
-    useState(
-      false,
-    );
+      const visibleOperations: OperationChecklistItem[] = operationResponse.items
+        .filter((operation) => operation.isActive || attachedIds.has(operation.id))
+        .map((operation) => ({
+          ...operation,
+          selected: false,
+        }));
 
-  const [
-    error,
-    setError,
-  ] =
-    useState<
-      string | null
-    >(null);
+      setOperations(visibleOperations);
 
-  const [
-    code,
-    setCode,
-  ] =
-    useState("");
+      const nextSelected: SelectedOperations = {};
 
-  const [
-    ownerId,
-    setOwnerId,
-  ] =
-    useState("");
-
-  const [
-    modelName,
-    setModelName,
-  ] =
-    useState("");
-
-  const [
-    totalQuantity,
-    setTotalQuantity,
-  ] =
-    useState("");
-
-  const [
-    pricingType,
-    setPricingType,
-  ] =
-    useState<OwnerPricingType>(
-      "PER_PIECE",
-    );
-
-  const [
-    price,
-    setPrice,
-  ] =
-    useState("");
-
-  const [
-    startDate,
-    setStartDate,
-  ] =
-    useState(
-      localToday(),
-    );
-
-  const [
-    note,
-    setNote,
-  ] =
-    useState("");
-
-  const [
-    newOperationName,
-    setNewOperationName,
-  ] =
-    useState("");
-
-  const [
-    newOperationRate,
-    setNewOperationRate,
-  ] =
-    useState("");
-
-  const loadOptions =
-    useCallback(
-      async () => {
-        setOptionsLoading(
-          true,
+      for (const operation of visibleOperations) {
+        const existing = batch?.operations.find(
+          (item) => item.operationId === operation.id,
         );
 
-        setError(
-          null,
-        );
-
-        try {
-          const [
-            ownerResponse,
-            operationResponse,
-          ] =
-            await Promise.all([
-              listOwners({
-                isActive:
-                  true,
-              }),
-
-              getOperationChecklist(),
-            ]);
-
-          setOwners(
-            ownerResponse.items,
-          );
-
-          setOperations(
-            operationResponse.items,
-          );
-
-          setSelected(
-            (
-              current,
-            ) => {
-              const next = {
-                ...current,
-              };
-
-              for (
-                const operation of
-                operationResponse.items
-              ) {
-                if (
-                  !next[
-                    operation.id
-                  ]
-                ) {
-                  next[
-                    operation.id
-                  ] = {
-                    selected:
-                      false,
-                    target:
-                      "",
-                  };
-                }
-              }
-
-              return next;
-            },
-          );
-        } catch (
-          caught
-        ) {
-          setError(
-            managerError(
-              caught,
-            ),
-          );
-        } finally {
-          setOptionsLoading(
-            false,
-          );
-        }
-      },
-      [],
-    );
-
-  useEffect(
-    () => {
-      if (
-        open
-      ) {
-        void loadOptions();
+        nextSelected[operation.id] = {
+          selected: existing?.isBatchOperationActive ?? false,
+          target: existing ? String(existing.targetQuantity) : "",
+        };
       }
-    },
-    [
-      loadOptions,
-      open,
-    ],
+
+      setSelected(nextSelected);
+    } catch (caught) {
+      setError(managerError(caught));
+    } finally {
+      setOptionsLoading(false);
+    }
+  }, [batch]);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    setCode(batch?.code ?? "");
+    setOwnerId(batch?.owner?.id ?? "");
+    setModelName(batch?.modelName ?? "");
+    setTotalQuantity(batch ? String(batch.totalQuantity) : "");
+    setPricingType(batch?.ownerPricingType ?? "PER_PIECE");
+    setPrice(
+      batch
+        ? batch.ownerPricingType === "PER_PIECE"
+          ? batch.ownerUnitPrice ?? ""
+          : batch.ownerFixedAmount ?? ""
+        : "",
+    );
+    setStartDate(batch?.startDate?.slice(0, 10) ?? localToday());
+    setNote(batch?.note ?? "");
+
+    const activeSizes = (batch?.sizes ?? []).filter((size) => size.isActive);
+    setSizes(
+      activeSizes.length > 0
+        ? activeSizes.map((size) => ({
+            key: size.id,
+            label: size.label,
+            quantity: String(size.quantity),
+          }))
+        : [
+            {
+              key: newSizeKey(),
+              label: "",
+              quantity: "",
+            },
+          ],
+    );
+
+    setNewOperationName("");
+    setNewOperationRate("");
+    setError(null);
+    void loadOptions();
+  }, [batch, loadOptions, open]);
+
+  const sizeTotal = useMemo(
+    () =>
+      sizes.reduce((sum, size) => {
+        const parsed = Number(size.quantity);
+        return sum + (Number.isInteger(parsed) && parsed > 0 ? parsed : 0);
+      }, 0),
+    [sizes],
   );
 
-  const selectedCount =
-    useMemo(
-      () =>
-        Object.values(
-          selected,
-        ).filter(
-          (
-            item,
-          ) =>
-            item.selected,
-        ).length,
-      [
-        selected,
-      ],
-    );
+  const selectedCount = useMemo(
+    () => Object.values(selected).filter((item) => item.selected).length,
+    [selected],
+  );
+
+  const selectableOperations = operations.filter(
+    (operation) => operation.isActive || batch?.operations.some(
+      (item) => item.operationId === operation.id,
+    ),
+  );
 
   const allOperationsSelected =
-    operations.length >
-      0 &&
-    operations.every(
-      (operation) =>
-        selected[
-          operation.id
-        ]?.selected,
-    );
+    selectableOperations.length > 0 &&
+    selectableOperations.every((operation) => selected[operation.id]?.selected);
 
   function toggleAllOperations() {
-    setSelected(
-      (current) => {
-        const next = {
-          ...current,
+    setSelected((current) => {
+      const next = { ...current };
+
+      for (const operation of selectableOperations) {
+        next[operation.id] = {
+          ...(next[operation.id] ?? { target: "", selected: false }),
+          selected: !allOperationsSelected,
         };
+      }
 
-        for (
-          const operation of
-          operations
-        ) {
-          const previous =
-            next[
-              operation.id
-            ] ?? {
-              selected:
-                false,
-              target:
-                "",
-            };
-
-          next[
-            operation.id
-          ] = {
-            ...previous,
-            selected:
-              !allOperationsSelected,
-          };
-        }
-
-        return next;
-      },
-    );
+      return next;
+    });
   }
 
   async function addInlineOperation() {
-    if (
-      !newOperationName.trim()
-    ) {
-      setError(
-        "نام عملیات جدید را وارد کنید.",
-      );
-
+    if (!newOperationName.trim()) {
+      setError("نام عملیات جدید را وارد کنید.");
       return;
     }
 
-    if (
-      !/^[1-9]\d*$/.test(
-        newOperationRate,
-      )
-    ) {
-      setError(
-        "نرخ عملیات جدید را به‌صورت عدد صحیح وارد کنید.",
-      );
-
+    if (!/^[1-9]\d*$/.test(newOperationRate)) {
+      setError("نرخ عملیات جدید را به‌صورت عدد صحیح وارد کنید.");
       return;
     }
 
-    setAddingOperation(
-      true,
-    );
-
-    setError(
-      null,
-    );
+    setAddingOperation(true);
+    setError(null);
 
     try {
-      const created =
-        await createOperation({
-          name:
-            newOperationName.trim(),
+      const created = await createOperation({
+        name: newOperationName.trim(),
+        initialRate: newOperationRate,
+      });
 
-          initialRate:
-            newOperationRate,
-        });
+      const item: OperationChecklistItem = {
+        ...created,
+        selected: false,
+      };
 
-      const newChecklistItem:
-        OperationChecklistItem = {
-          ...created,
-          selected:
-            false,
-        };
-
-      setOperations(
-        (
-          current,
-        ) => [
-          ...current,
-          newChecklistItem,
-        ],
-      );
-
-      setSelected(
-        (
-          current,
-        ) => ({
-          ...current,
-
-          [created.id]: {
-            selected:
-              true,
-
-            target:
-              "",
-          },
-        }),
-      );
-
-      setNewOperationName(
-        "",
-      );
-
-      setNewOperationRate(
-        "",
-      );
-    } catch (
-      caught
-    ) {
-      setError(
-        managerError(
-          caught,
-        ),
-      );
+      setOperations((current) => [...current, item]);
+      setSelected((current) => ({
+        ...current,
+        [created.id]: {
+          selected: true,
+          target: "",
+        },
+      }));
+      setNewOperationName("");
+      setNewOperationRate("");
+    } catch (caught) {
+      setError(managerError(caught));
     } finally {
-      setAddingOperation(
-        false,
-      );
+      setAddingOperation(false);
     }
   }
 
-  async function submit(
-    event:
-      FormEvent,
-  ) {
+  async function submit(event: FormEvent) {
     event.preventDefault();
 
-    const quantity =
-      Number(
-        totalQuantity,
-      );
+    const quantity = Number(totalQuantity);
 
     if (
       !code.trim() ||
       !ownerId ||
-      !Number.isInteger(
-        quantity,
-      ) ||
-      quantity <=
-        0
+      !Number.isInteger(quantity) ||
+      quantity <= 0
     ) {
-      setError(
-        "کد سری، صاحبکار و تعداد کل را کامل کنید.",
-      );
-
+      setError("کد سری، صاحبکار و تعداد کل را کامل کنید.");
       return;
     }
 
+    if (!/^[1-9]\d*$/.test(price)) {
+      setError("مبلغ قرارداد را به‌صورت عدد صحیح وارد کنید.");
+      return;
+    }
+
+    const sizePayload = sizes.map((size) => ({
+      label: size.label.trim(),
+      quantity: Number(size.quantity),
+    }));
+
     if (
-      !/^[1-9]\d*$/.test(
-        price,
+      sizePayload.length === 0 ||
+      sizePayload.some(
+        (size) =>
+          !size.label ||
+          !Number.isInteger(size.quantity) ||
+          size.quantity <= 0,
       )
     ) {
-      setError(
-        "مبلغ قرارداد را به‌صورت عدد صحیح وارد کنید.",
-      );
-
+      setError("برای هر سایز نام و تعداد صحیح وارد کنید.");
       return;
     }
 
-    const operationPayload =
-      operations
-        .filter(
-          (
-            operation,
-          ) =>
-            selected[
-              operation.id
-            ]?.selected,
-        )
-        .map(
-          (
-            operation,
-          ) => {
-            const target =
-              selected[
-                operation.id
-              ]?.target
-                .trim();
+    const normalizedLabels = sizePayload.map((size) =>
+      size.label.toLocaleLowerCase("fa-IR"),
+    );
 
-            return {
-              operationId:
-                operation.id,
+    if (new Set(normalizedLabels).size !== normalizedLabels.length) {
+      setError("سایز تکراری وجود دارد.");
+      return;
+    }
 
-              ...(target
-                ? {
-                    targetQuantity:
-                      Number(
-                        target,
-                      ),
-                  }
-                : {}),
-            };
-          },
-        );
+    if (sizePayload.reduce((sum, size) => sum + size.quantity, 0) !== quantity) {
+      setError("جمع تعداد سایزها باید دقیقاً با تعداد کل سری برابر باشد.");
+      return;
+    }
 
-    if (
-      operationPayload.length ===
-      0
-    ) {
-      setError(
-        "حداقل یک عملیات را برای سری‌کار انتخاب کنید.",
-      );
+    const operationPayload = operations
+      .filter((operation) => selected[operation.id]?.selected)
+      .map((operation) => {
+        const target = selected[operation.id]?.target.trim();
 
+        return {
+          operationId: operation.id,
+          ...(target ? { targetQuantity: Number(target) } : {}),
+        };
+      });
+
+    if (operationPayload.length === 0) {
+      setError("حداقل یک عملیات را برای سری‌کار انتخاب کنید.");
       return;
     }
 
     if (
       operationPayload.some(
-        (
-          item,
-        ) =>
-          item.targetQuantity !==
-            undefined &&
-          (
-            !Number.isInteger(
-              item.targetQuantity,
-            ) ||
-            item.targetQuantity <=
-              0
-          ),
+        (item) =>
+          item.targetQuantity !== undefined &&
+          (!Number.isInteger(item.targetQuantity) || item.targetQuantity <= 0),
       )
     ) {
-      setError(
-        "تعداد هدف عملیات باید عدد صحیح و مثبت باشد.",
-      );
-
+      setError("تعداد هدف عملیات باید عدد صحیح و مثبت باشد.");
       return;
     }
 
-    const input:
-      CreateWorkBatchInput = {
-        code:
-          code.trim(),
+    const input: CreateWorkBatchInput = {
+      code: code.trim(),
+      ownerId,
+      ...(modelName.trim() ? { modelName: modelName.trim() } : {}),
+      totalQuantity: quantity,
+      ownerPricingType: pricingType,
+      ...(pricingType === "PER_PIECE"
+        ? { ownerUnitPrice: price }
+        : { ownerFixedAmount: price }),
+      ...(startDate ? { startDate } : {}),
+      ...(note.trim() ? { note: note.trim() } : {}),
+      operations: operationPayload,
+      sizes: sizePayload,
+    };
 
-        ownerId,
-
-        ...(modelName.trim()
-          ? {
-              modelName:
-                modelName.trim(),
-            }
-          : {}),
-
-        totalQuantity:
-          quantity,
-
-        ownerPricingType:
-          pricingType,
-
-        ...(pricingType ===
-        "PER_PIECE"
-          ? {
-              ownerUnitPrice:
-                price,
-            }
-          : {
-              ownerFixedAmount:
-                price,
-            }),
-
-        ...(startDate
-          ? {
-              startDate,
-            }
-          : {}),
-
-        ...(note.trim()
-          ? {
-              note:
-                note.trim(),
-            }
-          : {}),
-
-        operations:
-          operationPayload,
-      };
-
-    setSaving(
-      true,
-    );
-
-    setError(
-      null,
-    );
+    setSaving(true);
+    setError(null);
 
     try {
-      await createWorkBatch(
-        input,
-      );
+      if (batch) {
+        await updateWorkBatch(batch.id, input);
+      } else {
+        await createWorkBatch(input);
+      }
 
-      setCode("");
-      setOwnerId("");
-      setModelName("");
-      setTotalQuantity("");
-
-      setPricingType(
-        "PER_PIECE",
-      );
-
-      setPrice("");
-
-      setStartDate(
-        localToday(),
-      );
-
-      setNote("");
-      setSelected({});
-
-      await onCreated();
-    } catch (
-      caught
-    ) {
-      setError(
-        managerError(
-          caught,
-        ),
-      );
+      await onSaved();
+    } catch (caught) {
+      setError(managerError(caught));
     } finally {
-      setSaving(
-        false,
-      );
+      setSaving(false);
     }
   }
 
-  if (
-    !open
-  ) {
+  if (!open) {
     return null;
   }
+
+  const parsedTotal = Number(totalQuantity);
+  const sizeTotalMatches =
+    Number.isInteger(parsedTotal) && parsedTotal > 0 && sizeTotal === parsedTotal;
 
   return (
     <div className="fixed inset-0 z-[100] flex items-end justify-center sm:items-center sm:p-5">
       <button
         type="button"
-        onClick={
-          onClose
-        }
+        onClick={onClose}
         className="absolute inset-0 bg-slate-950/50 backdrop-blur-[2px]"
+        aria-label="بستن"
       />
 
       <div className="relative max-h-[94dvh] w-full max-w-5xl overflow-y-auto rounded-t-[28px] bg-white shadow-2xl sm:rounded-[28px]">
         <div className="sticky top-0 z-20 flex items-start justify-between gap-4 border-b border-[var(--line)] bg-white/95 px-5 py-4 backdrop-blur sm:px-6">
           <div>
             <p className="text-base font-black">
-              سری‌کار جدید
+              {batch ? "ویرایش سری‌کار" : "سری‌کار جدید"}
             </p>
-
             <p className="mt-1 text-xs leading-5 text-[var(--muted)]">
-              مشخصات سری را وارد کنید و عملیات‌های موردنیاز را از کاتالوگ تیک بزنید.
+              مشخصات، سایزها و عملیات‌های این سری را مدیریت کنید.
             </p>
           </div>
 
           <button
             type="button"
-            onClick={
-              onClose
-            }
+            onClick={onClose}
             className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-[var(--surface-soft)]"
           >
             <X className="size-4" />
@@ -1457,559 +1213,354 @@ function CreateBatchModal({
 
           {optionsLoading ? (
             <div className="py-20 text-center">
-              <LoaderCircle className="mx-auto size-7 animate-spin text-[var(--brand)]" />
-
-              <p className="mt-3 text-xs font-bold text-[var(--muted)]">
+              <LoaderCircle className="mx-auto size-6 animate-spin text-[var(--brand)]" />
+              <p className="mt-3 text-xs text-[var(--muted)]">
                 در حال دریافت صاحبکارها و عملیات...
               </p>
             </div>
           ) : (
-            <form
-              onSubmit={
-                submit
-              }
-              className="space-y-6"
-            >
-              <section>
-                <p className="mb-4 text-sm font-black">
-                  مشخصات سری
-                </p>
+            <form onSubmit={submit} className="space-y-6">
+              <section className="grid gap-4 lg:grid-cols-2">
+                <div className="rounded-[22px] border border-[var(--line)] p-4">
+                  <p className="mb-4 text-sm font-black">مشخصات سری</p>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <Field label="کد سری">
+                      <input
+                        value={code}
+                        onChange={(event) => setCode(event.target.value)}
+                        className={inputClass}
+                        placeholder="مثلاً S-1405-08"
+                      />
+                    </Field>
 
-                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                  <Field
-                    label="کد سری"
-                  >
-                    <input
-                      dir="ltr"
-                      value={
-                        code
-                      }
-                      onChange={(
-                        event,
-                      ) =>
-                        setCode(
-                          event.target
-                            .value,
-                        )
-                      }
-                      className={
-                        inputClass
-                      }
-                      placeholder="BG-001"
-                    />
-                  </Field>
+                    <Field label="مدل / نام کار">
+                      <input
+                        value={modelName}
+                        onChange={(event) => setModelName(event.target.value)}
+                        className={inputClass}
+                        placeholder="اختیاری"
+                      />
+                    </Field>
 
-                  <Field
-                    label="صاحبکار"
-                  >
-                    <select
-                      value={
-                        ownerId
-                      }
-                      onChange={(
-                        event,
-                      ) =>
-                        setOwnerId(
-                          event.target
-                            .value,
-                        )
-                      }
-                      className={
-                        inputClass
-                      }
-                    >
-                      <option value="">
-                        انتخاب صاحبکار
-                      </option>
-
-                      {owners.map(
-                        (
-                          owner,
-                        ) => (
-                          <option
-                            key={
-                              owner.id
-                            }
-                            value={
-                              owner.id
-                            }
-                          >
+                    <Field label="صاحبکار">
+                      <select
+                        value={ownerId}
+                        onChange={(event) => setOwnerId(event.target.value)}
+                        className={inputClass}
+                      >
+                        <option value="">انتخاب صاحبکار</option>
+                        {owners.map((owner) => (
+                          <option key={owner.id} value={owner.id}>
                             {owner.name}
                           </option>
-                        ),
-                      )}
-                    </select>
-                  </Field>
+                        ))}
+                      </select>
+                    </Field>
 
-                  <Field
-                    label="مدل شلوار (اختیاری)"
-                  >
-                    <input
-                      value={
-                        modelName
-                      }
-                      onChange={(
-                        event,
-                      ) =>
-                        setModelName(
-                          event.target
-                            .value,
-                        )
-                      }
-                      className={
-                        inputClass
-                      }
-                      placeholder="مثلاً مام‌فیت ۲۰۲۷"
-                    />
-                  </Field>
+                    <Field label="تعداد کل سری">
+                      <input
+                        dir="ltr"
+                        inputMode="numeric"
+                        value={totalQuantity}
+                        onChange={(event) =>
+                          setTotalQuantity(event.target.value.replace(/\D/g, ""))
+                        }
+                        className={inputClass}
+                        placeholder="مثلاً 500"
+                      />
+                    </Field>
 
-                  <Field
-                    label="تعداد کل سری"
-                  >
-                    <input
-                      dir="ltr"
-                      inputMode="numeric"
-                      value={
-                        totalQuantity
-                      }
-                      onChange={(
-                        event,
-                      ) =>
-                        setTotalQuantity(
-                          event.target
-                            .value
-                            .replace(
-                              /\D/g,
-                              "",
-                            ),
-                        )
-                      }
-                      className={
-                        inputClass
-                      }
-                      placeholder="100"
-                    />
-                  </Field>
-
-                  <Field
-                    label="تاریخ شروع"
-                  >
-                    <JalaliDateInput
-                      dir="ltr"
-                      value={
-                        startDate
-                      }
-                      onChange={(
-                        event,
-                      ) =>
-                        setStartDate(
-                          event.target
-                            .value,
-                        )
-                      }
-                      className={
-                        inputClass
-                      }
-                    />
-                  </Field>
-                </div>
-              </section>
-
-              <section className="rounded-[24px] border border-[var(--line)] p-4 sm:p-5">
-                <div className="flex items-center gap-2">
-                  <CircleDollarSign className="size-4 text-[var(--brand)]" />
-
-                  <p className="text-sm font-black">
-                    قرارداد صاحبکار
-                  </p>
+                    <Field label="تاریخ شروع">
+                      <JalaliDateInput value={startDate} onChange={(event) => setStartDate(event.target.value)} />
+                    </Field>
+                  </div>
                 </div>
 
-                <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                  <button
-                    type="button"
-                    onClick={
-                      () => {
-                        setPricingType(
-                          "PER_PIECE",
-                        );
+                <div className="rounded-[22px] border border-[var(--line)] p-4">
+                  <p className="mb-4 text-sm font-black">قرارداد صاحبکار</p>
 
-                        setPrice(
-                          "",
-                        );
-                      }
-                    }
-                    className={`rounded-[18px] border p-4 text-right ${
-                      pricingType ===
-                      "PER_PIECE"
-                        ? "border-[var(--brand)] bg-[var(--brand-soft)]/40"
-                        : "border-[var(--line)]"
-                    }`}
-                  >
-                    <p className="text-xs font-black">
-                      قیمت دانه‌ای
-                    </p>
+                  <div className="mb-4 grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPricingType("PER_PIECE");
+                        setPrice("");
+                      }}
+                      className={`rounded-2xl border p-3 text-xs font-black ${
+                        pricingType === "PER_PIECE"
+                          ? "border-[var(--brand)] bg-[var(--brand-soft)] text-[var(--brand)]"
+                          : "border-[var(--line)]"
+                      }`}
+                    >
+                      دانه‌ای
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPricingType("FIXED_TOTAL");
+                        setPrice("");
+                      }}
+                      className={`rounded-2xl border p-3 text-xs font-black ${
+                        pricingType === "FIXED_TOTAL"
+                          ? "border-[var(--brand)] bg-[var(--brand-soft)] text-[var(--brand)]"
+                          : "border-[var(--line)]"
+                      }`}
+                    >
+                      مبلغ ثابت
+                    </button>
+                  </div>
 
-                    <p className="mt-1 text-[10px] leading-5 text-[var(--muted)]">
-                      مبلغ هر شلوار × تعداد کل سری
-                    </p>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={
-                      () => {
-                        setPricingType(
-                          "FIXED_TOTAL",
-                        );
-
-                        setPrice(
-                          "",
-                        );
-                      }
-                    }
-                    className={`rounded-[18px] border p-4 text-right ${
-                      pricingType ===
-                      "FIXED_TOTAL"
-                        ? "border-[var(--brand)] bg-[var(--brand-soft)]/40"
-                        : "border-[var(--line)]"
-                    }`}
-                  >
-                    <p className="text-xs font-black">
-                      مبلغ ثابت کل
-                    </p>
-
-                    <p className="mt-1 text-[10px] leading-5 text-[var(--muted)]">
-                      یک مبلغ نهایی برای کل سری
-                    </p>
-                  </button>
-                </div>
-
-                <div className="mt-4">
                   <Field
                     label={
-                      pricingType ===
-                      "PER_PIECE"
-                        ? "قیمت هر عدد"
+                      pricingType === "PER_PIECE"
+                        ? "مبلغ هر عدد"
                         : "مبلغ کل سری"
                     }
                   >
                     <input
                       dir="ltr"
                       inputMode="numeric"
-                      value={
-                        price
+                      value={price}
+                      onChange={(event) =>
+                        setPrice(event.target.value.replace(/\D/g, ""))
                       }
-                      onChange={(
-                        event,
-                      ) =>
-                        setPrice(
-                          event.target
-                            .value
-                            .replace(
-                              /\D/g,
-                              "",
-                            ),
-                        )
-                      }
-                      className={
-                        inputClass
-                      }
-                      placeholder="مبلغ به تومان"
+                      className={inputClass}
+                      placeholder="تومان"
                     />
                   </Field>
-
-                  {price && (
-                    <p className="mt-2 text-xs font-black text-[var(--brand)]">
-                      {pricingType ===
-                      "PER_PIECE" &&
-                      totalQuantity
-                        ? `${money(
-                            price,
-                          )} × ${faNumber(
-                            totalQuantity,
-                          )} = ${money(
-                            (
-                              BigInt(
-                                price,
-                              ) *
-                              BigInt(
-                                totalQuantity,
-                              )
-                            ).toString(),
-                          )}`
-                        : money(
-                            price,
-                          )}
-                    </p>
-                  )}
                 </div>
               </section>
 
-              <section className="rounded-[24px] border border-[var(--line)] p-4 sm:p-5">
-                <div className="mb-4 flex items-start justify-between gap-3">
+              <section>
+                <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
                   <div>
-                    <p className="text-sm font-black">
-                      عملیات‌های این سری
-                    </p>
-
-                    <p className="mt-1 text-xs leading-6 text-[var(--muted)]">
-                      تمام عملیات‌های فعال به‌صورت پیش‌فرض اینجا هستند؛ فقط موارد لازم را تیک بزنید.
+                    <p className="text-sm font-black">سایزبندی سری</p>
+                    <p className="mt-1 text-[10px] leading-5 text-[var(--muted)]">
+                      مثال: 38 = 100 عدد، 40 = 100 عدد. جمع باید برابر تعداد کل باشد.
                     </p>
                   </div>
 
-                  <div className="flex shrink-0 flex-col items-end gap-2 sm:flex-row sm:items-center">
-                    {operations.length >
-                      0 && (
-                      <button
-                        type="button"
-                        onClick={
-                          toggleAllOperations
-                        }
-                        className={`inline-flex h-9 items-center gap-2 rounded-xl border px-3 text-[10px] font-black transition ${
-                          allOperationsSelected
-                            ? "border-[var(--brand)] bg-[var(--brand)] text-white"
-                            : "border-[var(--line-strong)] bg-white text-[var(--text)] hover:border-[var(--brand)] hover:text-[var(--brand)]"
-                        }`}
-                      >
-                        <span
-                          className={`flex size-4 items-center justify-center rounded border ${
-                            allOperationsSelected
-                              ? "border-white/50 bg-white/15"
-                              : "border-slate-300 bg-white"
-                          }`}
-                        >
-                          {allOperationsSelected && (
-                            <Check className="size-3" />
-                          )}
-                        </span>
-
-                        {allOperationsSelected
-                          ? "لغو انتخاب همه"
-                          : "انتخاب همه"}
-                      </button>
-                    )}
-
-                    <span className="rounded-full bg-[var(--brand-soft)] px-3 py-1.5 text-[10px] font-black text-[var(--brand)]">
-                      {faNumber(
-                        selectedCount,
-                      )} انتخاب
-                    </span>
+                  <div
+                    className={`rounded-xl px-3 py-2 text-[10px] font-black ${
+                      sizeTotalMatches
+                        ? "bg-emerald-50 text-emerald-700"
+                        : "bg-amber-50 text-amber-700"
+                    }`}
+                  >
+                    جمع سایزها: {faNumber(sizeTotal)} از {faNumber(totalQuantity || 0)}
                   </div>
                 </div>
 
-                {operations.length ===
-                0 ? (
-                  <div className="rounded-2xl bg-amber-50 p-4 text-xs font-bold leading-6 text-amber-800">
-                    هنوز عملیات فعالی وجود ندارد. پایین همین فرم می‌توانید اولین عملیات را اضافه کنید.
-                  </div>
-                ) : (
-                  <div className="rounded-[22px] border border-slate-200 bg-slate-50/80 p-3 shadow-inner">
-                    <div className="mb-3 flex items-center justify-between gap-3 px-1">
-                      <p className="text-[10px] font-bold text-slate-500">
-                        لیست عملیات
-                      </p>
+                <div className="space-y-2 rounded-[22px] border border-[var(--line)] bg-[var(--surface-soft)] p-3">
+                  {sizes.map((size, index) => (
+                    <div
+                      key={size.key}
+                      className="grid gap-2 rounded-2xl bg-white p-3 sm:grid-cols-[1fr_180px_auto]"
+                    >
+                      <input
+                        value={size.label}
+                        onChange={(event) =>
+                          setSizes((current) =>
+                            current.map((item) =>
+                              item.key === size.key
+                                ? { ...item, label: event.target.value }
+                                : item,
+                            ),
+                          )
+                        }
+                        className={inputClass}
+                        placeholder="سایز؛ مثلاً 40 یا XL"
+                      />
 
-                      <p className="text-[10px] text-slate-400">
-                        داخل این کادر اسکرول کنید
-                      </p>
+                      <input
+                        dir="ltr"
+                        inputMode="numeric"
+                        value={size.quantity}
+                        onChange={(event) =>
+                          setSizes((current) =>
+                            current.map((item) =>
+                              item.key === size.key
+                                ? {
+                                    ...item,
+                                    quantity: event.target.value.replace(/\D/g, ""),
+                                  }
+                                : item,
+                            ),
+                          )
+                        }
+                        className={inputClass}
+                        placeholder="تعداد"
+                      />
+
+                      <button
+                        type="button"
+                        disabled={sizes.length === 1}
+                        onClick={() =>
+                          setSizes((current) =>
+                            current.filter((item) => item.key !== size.key),
+                          )
+                        }
+                        className="flex h-12 items-center justify-center rounded-xl border border-red-100 bg-red-50 px-3 text-red-600 disabled:opacity-30"
+                        aria-label={`حذف سایز ${index + 1}`}
+                      >
+                        <X className="size-4" />
+                      </button>
                     </div>
+                  ))}
 
-                    <div className="grid max-h-[390px] gap-2 overflow-y-auto overscroll-contain pl-1 [scrollbar-gutter:stable] md:grid-cols-2">
-                    {operations.map(
-                      (
-                        operation,
-                      ) => {
-                        const state =
-                          selected[
-                            operation.id
-                          ] ?? {
-                            selected:
-                              false,
-                            target:
-                              "",
-                          };
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setSizes((current) => [
+                        ...current,
+                        {
+                          key: newSizeKey(),
+                          label: "",
+                          quantity: "",
+                        },
+                      ])
+                    }
+                    className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-dashed border-[var(--brand)]/30 bg-white text-xs font-black text-[var(--brand)]"
+                  >
+                    <Plus className="size-4" />
+                    افزودن سایز
+                  </button>
+                </div>
+              </section>
 
-                        return (
-                          <div
-                            key={
-                              operation.id
+              <section>
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-black">عملیات‌های این سری</p>
+                    <p className="mt-1 text-[10px] leading-5 text-[var(--muted)]">
+                      عملیات‌ها را اضافه یا کم کنید. حذف از این سری، سابقه قبلی را پاک نمی‌کند.
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={toggleAllOperations}
+                    className="h-9 rounded-xl border border-[var(--line)] bg-white px-3 text-[10px] font-black"
+                  >
+                    {allOperationsSelected ? "برداشتن همه" : "انتخاب همه"}
+                  </button>
+                </div>
+
+                <div className="rounded-[22px] border border-[var(--line)] bg-[var(--surface-soft)] p-3">
+                  <div className="mb-2 flex items-center justify-between px-1 text-[10px] text-[var(--muted)]">
+                    <span>لیست عملیات</span>
+                    <span>{faNumber(selectedCount)} انتخاب‌شده</span>
+                  </div>
+
+                  <div className="grid max-h-[390px] gap-2 overflow-y-auto overscroll-contain pl-1 [scrollbar-gutter:stable] md:grid-cols-2">
+                    {operations.map((operation) => {
+                      const state = selected[operation.id] ?? {
+                        selected: false,
+                        target: "",
+                      };
+
+                      return (
+                        <div
+                          key={operation.id}
+                          className={`rounded-[20px] border p-3 ${
+                            state.selected
+                              ? "border-[var(--brand)] bg-[var(--brand-soft)]/30"
+                              : "border-[var(--line)] bg-white"
+                          }`}
+                        >
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setSelected((current) => ({
+                                ...current,
+                                [operation.id]: {
+                                  ...state,
+                                  selected: !state.selected,
+                                },
+                              }))
                             }
-                            className={`rounded-[20px] border p-3 transition ${
-                              state.selected
-                                ? "border-[var(--brand)] bg-[var(--brand-soft)]/30"
-                                : "border-[var(--line)] bg-white"
-                            }`}
+                            className="flex w-full items-center justify-between gap-3 text-right"
                           >
-                            <button
-                              type="button"
-                              onClick={
-                                () =>
-                                  setSelected(
-                                    (
-                                      current,
-                                    ) => ({
-                                      ...current,
+                            <div>
+                              <p className="text-xs font-black">{operation.name}</p>
+                              <p className="mt-1 text-[9px] text-[var(--muted)]">
+                                {operation.isActive ? "فعال" : "غیرفعال در کاتالوگ"}
+                                {operation.currentRate
+                                  ? ` · ${money(operation.currentRate)}`
+                                  : ""}
+                              </p>
+                            </div>
 
-                                      [operation.id]: {
-                                        ...state,
-
-                                        selected:
-                                          !state.selected,
-                                      },
-                                    }),
-                                  )
-                              }
-                              className="flex w-full items-center justify-between gap-3 text-right"
+                            <span
+                              className={`flex size-7 items-center justify-center rounded-lg border ${
+                                state.selected
+                                  ? "border-[var(--brand)] bg-[var(--brand)] text-white"
+                                  : "border-slate-300 bg-white"
+                              }`}
                             >
-                              <div>
-                                <p className="text-xs font-black">
-                                  {operation.name}
-                                </p>
+                              {state.selected && <Check className="size-4" />}
+                            </span>
+                          </button>
 
-                                <p className="mt-1 text-[9px] text-[var(--muted)]">
-                                  نرخ فعلی:{" "}
-                                  {operation.currentRate
-                                    ? money(
-                                        operation.currentRate,
-                                      )
-                                    : "بدون نرخ"}
-                                </p>
-                              </div>
-
-                              <span
-                                className={`flex size-7 shrink-0 items-center justify-center rounded-lg border ${
-                                  state.selected
-                                    ? "border-[var(--brand)] bg-[var(--brand)] text-white"
-                                    : "border-slate-300 bg-white"
-                                }`}
-                              >
-                                {state.selected && (
-                                  <Check className="size-4" />
-                                )}
-                              </span>
-                            </button>
-
-                            {state.selected && (
-                              <div className="mt-3 border-t border-[var(--line)] pt-3">
-                                <label className="mb-1.5 block text-[9px] font-black text-[var(--muted)]">
-                                  تعداد هدف این عملیات
-                                </label>
-
-                                <input
-                                  dir="ltr"
-                                  inputMode="numeric"
-                                  value={
-                                    state.target
-                                  }
-                                  onChange={(
-                                    event,
-                                  ) =>
-                                    setSelected(
-                                      (
-                                        current,
-                                      ) => ({
-                                        ...current,
-
-                                        [operation.id]: {
-                                          selected:
-                                            true,
-
-                                          target:
-                                            event.target
-                                              .value
-                                              .replace(
-                                                /\D/g,
-                                                "",
-                                              ),
-                                        },
-                                      }),
-                                    )
-                                  }
-                                  className="h-10 w-full rounded-xl border border-[var(--line)] bg-white px-3 text-center text-xs font-black outline-none focus:border-[var(--brand)]"
-                                  placeholder={
-                                    totalQuantity
-                                      ? `خالی = ${faNumber(
-                                          totalQuantity,
-                                        )}`
-                                      : "خالی = تعداد کل سری"
-                                  }
-                                />
-                              </div>
-                            )}
-                          </div>
-                        );
-                      },
-                    )}
-                    </div>
+                          {state.selected && (
+                            <div className="mt-3 border-t border-[var(--line)] pt-3">
+                              <label className="mb-1.5 block text-[9px] font-black text-[var(--muted)]">
+                                تعداد هدف عملیات
+                              </label>
+                              <input
+                                dir="ltr"
+                                inputMode="numeric"
+                                value={state.target}
+                                onChange={(event) =>
+                                  setSelected((current) => ({
+                                    ...current,
+                                    [operation.id]: {
+                                      selected: true,
+                                      target: event.target.value.replace(/\D/g, ""),
+                                    },
+                                  }))
+                                }
+                                className="h-10 w-full rounded-xl border border-[var(--line)] bg-white px-3 text-center text-xs font-black outline-none focus:border-[var(--brand)]"
+                                placeholder={
+                                  totalQuantity
+                                    ? `خالی = ${faNumber(totalQuantity)}`
+                                    : "خالی = تعداد کل سری"
+                                }
+                              />
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
-                )}
+                </div>
 
                 <div className="mt-4 rounded-[20px] bg-[var(--surface-soft)] p-4">
                   <div className="flex items-center gap-2">
                     <Plus className="size-4 text-[var(--brand)]" />
-
-                    <p className="text-xs font-black">
-                      عملیات جدید پیدا نکردید؟
-                    </p>
+                    <p className="text-xs font-black">عملیات جدید پیدا نکردید؟</p>
                   </div>
-
-                  <p className="mt-1 text-[10px] leading-5 text-[var(--muted)]">
-                    همین‌جا بسازید؛ به کاتالوگ اصلی اضافه می‌شود و برای سری‌های آینده هم باقی می‌ماند.
-                  </p>
-
                   <div className="mt-3 grid gap-2 md:grid-cols-[1fr_190px_auto]">
                     <input
-                      value={
-                        newOperationName
-                      }
-                      onChange={(
-                        event,
-                      ) =>
-                        setNewOperationName(
-                          event.target
-                            .value,
-                        )
-                      }
-                      className={
-                        inputClass
-                      }
+                      value={newOperationName}
+                      onChange={(event) => setNewOperationName(event.target.value)}
+                      className={inputClass}
                       placeholder="نام عملیات جدید"
                     />
-
                     <input
                       dir="ltr"
                       inputMode="numeric"
-                      value={
-                        newOperationRate
+                      value={newOperationRate}
+                      onChange={(event) =>
+                        setNewOperationRate(event.target.value.replace(/\D/g, ""))
                       }
-                      onChange={(
-                        event,
-                      ) =>
-                        setNewOperationRate(
-                          event.target
-                            .value
-                            .replace(
-                              /\D/g,
-                              "",
-                            ),
-                        )
-                      }
-                      className={
-                        inputClass
-                      }
+                      className={inputClass}
                       placeholder="نرخ اولیه"
                     />
-
                     <button
                       type="button"
-                      disabled={
-                        addingOperation
-                      }
-                      onClick={
-                        () => {
-                          void addInlineOperation();
-                        }
-                      }
+                      disabled={addingOperation}
+                      onClick={() => void addInlineOperation()}
                       className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-[#102827] px-4 text-xs font-black text-white disabled:opacity-50"
                     >
                       {addingOperation ? (
@@ -2017,60 +1568,42 @@ function CreateBatchModal({
                       ) : (
                         <Scissors className="size-4" />
                       )}
-
                       اضافه
                     </button>
                   </div>
                 </div>
               </section>
 
-              <section>
-                <Field
-                  label="توضیحات سری"
-                >
-                  <textarea
-                    rows={
-                      3
-                    }
-                    maxLength={
-                      1000
-                    }
-                    value={
-                      note
-                    }
-                    onChange={(
-                      event,
-                    ) =>
-                      setNote(
-                        event.target
-                          .value,
-                      )
-                    }
-                    className={
-                      textareaClass
-                    }
-                    placeholder="اختیاری..."
-                  />
-                </Field>
-              </section>
+              <Field label="توضیحات سری">
+                <textarea
+                  rows={3}
+                  maxLength={1000}
+                  value={note}
+                  onChange={(event) => setNote(event.target.value)}
+                  className={textareaClass}
+                  placeholder="اختیاری..."
+                />
+              </Field>
 
               <div className="sticky bottom-0 -mx-5 -mb-5 border-t border-[var(--line)] bg-white/95 p-5 backdrop-blur sm:-mx-6 sm:-mb-6 sm:px-6">
                 <button
                   type="submit"
-                  disabled={
-                    saving
-                  }
+                  disabled={saving}
                   className="flex h-13 w-full items-center justify-center gap-2 rounded-2xl bg-[var(--brand)] text-sm font-black text-white shadow-[0_12px_30px_rgba(13,116,109,.16)] disabled:opacity-50"
                 >
                   {saving ? (
                     <>
                       <LoaderCircle className="size-4 animate-spin" />
-                      در حال ساخت سری...
+                      {batch ? "در حال ذخیره تغییرات..." : "در حال ساخت سری..."}
                     </>
                   ) : (
                     <>
-                      <PackagePlus className="size-4" />
-                      ساخت سری‌کار
+                      {batch ? (
+                        <Pencil className="size-4" />
+                      ) : (
+                        <PackagePlus className="size-4" />
+                      )}
+                      {batch ? "ذخیره تغییرات" : "ساخت سری‌کار"}
                     </>
                   )}
                 </button>
@@ -2082,6 +1615,7 @@ function CreateBatchModal({
     </div>
   );
 }
+
 
 function Field({
   label,

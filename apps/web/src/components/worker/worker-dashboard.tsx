@@ -273,6 +273,12 @@ export function WorkerDashboard({
     useState("");
 
   const [
+    selectedBatchSizeId,
+    setSelectedBatchSizeId,
+  ] =
+    useState("");
+
+  const [
     quantity,
     setQuantity,
   ] =
@@ -458,6 +464,25 @@ export function WorkerDashboard({
       ],
     );
 
+  const sizes =
+    selected?.sizes ??
+    [];
+
+  const selectedSize =
+    useMemo(
+      () =>
+        sizes.find(
+          (size) =>
+            size.id ===
+            selectedBatchSizeId,
+        ) ??
+        null,
+      [
+        sizes,
+        selectedBatchSizeId,
+      ],
+    );
+
   useEffect(
     () => {
       if (
@@ -469,6 +494,10 @@ export function WorkerDashboard({
         );
 
         setSelectedBatchOperationId(
+          "",
+        );
+
+        setSelectedBatchSizeId(
           "",
         );
 
@@ -485,20 +514,27 @@ export function WorkerDashboard({
       if (
         !batchExists
       ) {
+        const first =
+          available[0];
+
         setSelectedBatchId(
-          available[0].batchId,
+          first.batchId,
         );
 
         setSelectedBatchOperationId(
-          available[0]
-            .batchOperationId,
+          first.batchOperationId,
+        );
+
+        setSelectedBatchSizeId(
+          first.sizes?.[0]?.id ??
+            "",
         );
 
         return;
       }
 
-      const operationExists =
-        available.some(
+      const currentOperation =
+        available.find(
           (item) =>
             item.batchId ===
               selectedBatchId &&
@@ -507,7 +543,7 @@ export function WorkerDashboard({
         );
 
       if (
-        !operationExists
+        !currentOperation
       ) {
         const first =
           available.find(
@@ -520,12 +556,37 @@ export function WorkerDashboard({
           first?.batchOperationId ??
             "",
         );
+
+        setSelectedBatchSizeId(
+          first?.sizes?.[0]?.id ??
+            "",
+        );
+
+        return;
+      }
+
+      const sizeExists =
+        (currentOperation.sizes ?? []).some(
+          (size) =>
+            size.id ===
+            selectedBatchSizeId,
+        );
+
+      if (
+        !sizeExists
+      ) {
+        setSelectedBatchSizeId(
+          currentOperation.sizes?.[0]
+            ?.id ??
+            "",
+        );
       }
     },
     [
       available,
       selectedBatchId,
       selectedBatchOperationId,
+      selectedBatchSizeId,
     ],
   );
 
@@ -541,15 +602,17 @@ export function WorkerDashboard({
   const validQuantity =
     Boolean(
       selected &&
+        selectedSize &&
         parsedQuantity >
           0 &&
         parsedQuantity <=
-          selected.remainingQuantity,
+          selectedSize.remainingQuantity,
     );
 
   const canSubmit =
     Boolean(
       selected &&
+        selectedSize &&
         validQuantity &&
         !submitting,
     );
@@ -612,6 +675,7 @@ export function WorkerDashboard({
 
     if (
       !selected ||
+      !selectedSize ||
       !canSubmit
     ) {
       return;
@@ -633,6 +697,9 @@ export function WorkerDashboard({
       await createWorkerEntry({
         batchOperationId:
           selected.batchOperationId,
+
+        workBatchSizeId:
+          selectedSize.id,
 
         quantity:
           parsedQuantity,
@@ -662,6 +729,12 @@ export function WorkerDashboard({
         (
           caught.code ===
             "WORK_QUANTITY_EXCEEDS_REMAINING" ||
+          caught.code ===
+            "WORK_SIZE_QUANTITY_EXCEEDS_REMAINING" ||
+          caught.code ===
+            "BATCH_SIZE_NOT_ACTIVE" ||
+          caught.code ===
+            "BATCH_OPERATION_NOT_ACTIVE" ||
           caught.code ===
             "BATCH_NOT_ACTIVE"
         )
@@ -1031,6 +1104,11 @@ export function WorkerDashboard({
                                 "",
                             );
 
+                            setSelectedBatchSizeId(
+                              first?.sizes?.[0]?.id ??
+                                "",
+                            );
+
                             setQuantity(
                               "",
                             );
@@ -1066,134 +1144,238 @@ export function WorkerDashboard({
                       </div>
                     </div>
 
-                    <div>
-                      <div className="mb-2 flex items-center justify-between">
-                        <label className="text-xs font-black">
-                          عملیات
-                        </label>
+                    <div className="grid gap-4 lg:grid-cols-2">
+                      <div>
+                        <div className="mb-2 flex items-center justify-between">
+                          <label className="text-xs font-black">
+                            عملیات
+                          </label>
 
-                        <span className="text-[10px] text-[var(--muted)]">
-                          {formatNumber(
-                            operations.length,
-                          )} مورد
-                        </span>
-                      </div>
-
-                      <div className="rounded-[24px] border border-slate-200 bg-slate-100 p-3 shadow-inner">
-                        <div className="mb-3 flex items-center justify-between gap-3 px-1">
-                          <p className="text-[10px] font-bold text-slate-500">
-                            عملیات‌های این سری
-                          </p>
-
-                          <p className="text-[10px] text-slate-400">
-                            داخل این کادر اسکرول کنید
-                          </p>
+                          <span className="text-[10px] text-[var(--muted)]">
+                            {formatNumber(
+                              operations.length,
+                            )} مورد
+                          </span>
                         </div>
 
-                        <div className="grid max-h-[250px] gap-2 overflow-y-auto overscroll-contain pl-1 [scrollbar-gutter:stable] sm:grid-cols-2 sm:max-h-[240px]">
-                          {operations.map(
-                            (
-                              item,
-                            ) => {
-                              const active =
-                                item.batchOperationId ===
-                                selectedBatchOperationId;
+                        <div className="rounded-[24px] border border-slate-200 bg-slate-100 p-3 shadow-inner">
+                          <div className="mb-3 flex items-center justify-between gap-3 px-1">
+                            <p className="text-[10px] font-bold text-slate-500">
+                              عملیات‌های این سری
+                            </p>
 
-                              return (
-                                <button
-                                  type="button"
-                                  key={
-                                    item.batchOperationId
-                                  }
-                                  onClick={
-                                    () => {
-                                      setSelectedBatchOperationId(
-                                        item.batchOperationId,
-                                      );
+                            <p className="text-[10px] text-slate-400">
+                              داخل کادر اسکرول کنید
+                            </p>
+                          </div>
 
-                                      setQuantity(
-                                        "",
-                                      );
+                          <div className="grid max-h-[250px] gap-2 overflow-y-auto overscroll-contain pl-1 [scrollbar-gutter:stable] sm:max-h-[240px]">
+                            {operations.map(
+                              (
+                                item,
+                              ) => {
+                                const active =
+                                  item.batchOperationId ===
+                                  selectedBatchOperationId;
 
-                                      setSuccess(
-                                        null,
-                                      );
+                                return (
+                                  <button
+                                    type="button"
+                                    key={
+                                      item.batchOperationId
                                     }
-                                  }
-                                  className={`rounded-[20px] border p-4 text-right transition ${
-                                    active
-                                      ? "border-[var(--brand)] bg-white ring-2 ring-[var(--brand)]/10"
-                                      : "border-slate-200 bg-white/80 hover:border-slate-300"
-                                  }`}
-                                >
-                                  <div className="flex items-start justify-between gap-3">
-                                    <div>
-                                      <p className="text-sm font-black">
-                                        {item.operationName}
-                                      </p>
+                                    onClick={
+                                      () => {
+                                        setSelectedBatchOperationId(
+                                          item.batchOperationId,
+                                        );
 
-                                      <p className="mt-1 text-[11px] text-[var(--muted)]">
-                                        باقی‌مانده{" "}
-                                        <span className="font-black text-[var(--text)]">
-                                          {formatNumber(
-                                            item.remainingQuantity,
-                                          )}
-                                        </span>{" "}
-                                        عدد
-                                      </p>
+                                        setSelectedBatchSizeId(
+                                          item.sizes?.[0]?.id ??
+                                            "",
+                                        );
+
+                                        setQuantity(
+                                          "",
+                                        );
+
+                                        setSuccess(
+                                          null,
+                                        );
+                                      }
+                                    }
+                                    className={`rounded-[20px] border p-4 text-right transition ${
+                                      active
+                                        ? "border-[var(--brand)] bg-white ring-2 ring-[var(--brand)]/10"
+                                        : "border-slate-200 bg-white/80 hover:border-slate-300"
+                                    }`}
+                                  >
+                                    <div className="flex items-start justify-between gap-3">
+                                      <div>
+                                        <p className="text-sm font-black">
+                                          {item.operationName}
+                                        </p>
+
+                                        <p className="mt-1 text-[11px] text-[var(--muted)]">
+                                          باقی‌مانده کل عملیات{" "}
+                                          <span className="font-black text-[var(--text)]">
+                                            {formatNumber(
+                                              item.remainingQuantity,
+                                            )}
+                                          </span>{" "}
+                                          عدد
+                                        </p>
+                                      </div>
+
+                                      <span
+                                        className={`mt-1 size-3 rounded-full border-2 ${
+                                          active
+                                            ? "border-[var(--brand)] bg-[var(--brand)]"
+                                            : "border-slate-300 bg-white"
+                                        }`}
+                                      />
                                     </div>
+                                  </button>
+                                );
+                              },
+                            )}
+                          </div>
+                        </div>
+                      </div>
 
-                                    <span
-                                      className={`mt-1 size-3 rounded-full border-2 ${
-                                        active
-                                          ? "border-[var(--brand)] bg-[var(--brand)]"
-                                          : "border-slate-300 bg-white"
-                                      }`}
-                                    />
-                                  </div>
-                                </button>
-                              );
-                            },
-                          )}
+                      <div>
+                        <div className="mb-2 flex items-center justify-between">
+                          <label className="text-xs font-black">
+                            سایز
+                          </label>
+
+                          <span className="text-[10px] text-[var(--muted)]">
+                            {formatNumber(
+                              sizes.length,
+                            )} سایز
+                          </span>
+                        </div>
+
+                        <div className="rounded-[24px] border border-slate-200 bg-slate-100 p-3 shadow-inner">
+                          <div className="mb-3 flex items-center justify-between gap-3 px-1">
+                            <p className="text-[10px] font-bold text-slate-500">
+                              سایزهای این سری
+                            </p>
+
+                            <p className="text-[10px] text-slate-400">
+                              برای عملیات انتخاب‌شده
+                            </p>
+                          </div>
+
+                          <div className="grid max-h-[250px] gap-2 overflow-y-auto overscroll-contain pl-1 [scrollbar-gutter:stable] sm:max-h-[240px] sm:grid-cols-2">
+                            {sizes.map(
+                              (
+                                size,
+                              ) => {
+                                const active =
+                                  size.id ===
+                                  selectedBatchSizeId;
+
+                                return (
+                                  <button
+                                    type="button"
+                                    key={
+                                      size.id
+                                    }
+                                    onClick={
+                                      () => {
+                                        setSelectedBatchSizeId(
+                                          size.id,
+                                        );
+
+                                        setQuantity(
+                                          "",
+                                        );
+
+                                        setSuccess(
+                                          null,
+                                        );
+                                      }
+                                    }
+                                    className={`rounded-[20px] border p-4 text-right transition ${
+                                      active
+                                        ? "border-[var(--brand)] bg-white ring-2 ring-[var(--brand)]/10"
+                                        : "border-slate-200 bg-white/80 hover:border-slate-300"
+                                    }`}
+                                  >
+                                    <div className="flex items-start justify-between gap-3">
+                                      <div>
+                                        <p className="text-sm font-black">
+                                          سایز {size.label}
+                                        </p>
+
+                                        <p className="mt-1 text-[11px] text-[var(--muted)]">
+                                          باقی‌مانده{" "}
+                                          <span className="font-black text-[var(--text)]">
+                                            {formatNumber(
+                                              size.remainingQuantity,
+                                            )}
+                                          </span>{" "}
+                                          از{" "}
+                                          {formatNumber(
+                                            size.quantity,
+                                          )}
+                                        </p>
+                                      </div>
+
+                                      <span
+                                        className={`mt-1 size-3 rounded-full border-2 ${
+                                          active
+                                            ? "border-[var(--brand)] bg-[var(--brand)]"
+                                            : "border-slate-300 bg-white"
+                                        }`}
+                                      />
+                                    </div>
+                                  </button>
+                                );
+                              },
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>
 
-                    {selected && (
+                    {selected &&
+                    selectedSize && (
                       <>
                         <div className="grid grid-cols-3 gap-2 rounded-[22px] bg-[var(--surface-soft)] p-3">
                           <div className="rounded-2xl bg-white p-3 text-center">
                             <p className="text-[10px] text-[var(--muted)]">
-                              کل سری
+                              ظرفیت سایز
                             </p>
 
                             <p className="mt-1 text-sm font-black">
                               {formatNumber(
-                                selected.targetQuantity,
+                                selectedSize.quantity,
                               )}
                             </p>
                           </div>
 
                           <div className="rounded-2xl bg-white p-3 text-center">
                             <p className="text-[10px] text-[var(--muted)]">
-                              ثبت‌شده
+                              ثبت این عملیات
                             </p>
 
                             <p className="mt-1 text-sm font-black">
                               {formatNumber(
-                                selected.claimedQuantity,
+                                selectedSize.claimedQuantity,
                               )}
                             </p>
                           </div>
 
                           <div className="rounded-2xl bg-emerald-50 p-3 text-center">
                             <p className="text-[10px] text-emerald-700/65">
-                              باقی‌مانده
+                              باقی‌مانده سایز
                             </p>
 
                             <p className="mt-1 text-sm font-black text-emerald-700">
                               {formatNumber(
-                                selected.remainingQuantity,
+                                selectedSize.remainingQuantity,
                               )}
                             </p>
                           </div>
@@ -1214,7 +1396,7 @@ export function WorkerDashboard({
                               1
                             }
                             max={
-                              selected.remainingQuantity
+                              selectedSize.remainingQuantity
                             }
                             inputMode="numeric"
                             dir="ltr"
@@ -1243,11 +1425,11 @@ export function WorkerDashboard({
                           />
 
                           {parsedQuantity >
-                            selected.remainingQuantity && (
+                            selectedSize.remainingQuantity && (
                             <p className="mt-2 text-xs font-bold text-red-600">
                               حداکثر قابل ثبت{" "}
                               {formatNumber(
-                                selected.remainingQuantity,
+                                selectedSize.remainingQuantity,
                               )}{" "}
                               عدد است.
                             </p>
@@ -1449,6 +1631,7 @@ export function WorkerDashboard({
                                 {entry.modelName
                                   ? ` · ${entry.modelName}`
                                   : ""}
+                                {` · سایز ${entry.sizeLabel}`}
                               </p>
                             </div>
 

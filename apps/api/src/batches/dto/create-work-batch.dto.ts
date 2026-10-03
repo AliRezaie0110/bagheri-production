@@ -19,6 +19,9 @@ import {
 import {
   CreateBatchOperationDto,
 } from './create-batch-operation.dto';
+import {
+  CreateWorkBatchSizeDto,
+} from './create-work-batch-size.dto';
 
 export class CreateWorkBatchDto {
   @IsString()
@@ -70,4 +73,16 @@ export class CreateWorkBatchDto {
   )
   operations!:
     CreateBatchOperationDto[];
+
+  @IsArray()
+  @ArrayMinSize(1)
+  @ValidateNested({
+    each: true,
+  })
+  @Type(
+    () =>
+      CreateWorkBatchSizeDto,
+  )
+  sizes!:
+    CreateWorkBatchSizeDto[];
 }

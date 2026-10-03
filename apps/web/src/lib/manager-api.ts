@@ -463,10 +463,19 @@ export type BatchOperationItem = {
   operationId: string;
   name: string;
   isOperationActive: boolean;
+  isBatchOperationActive: boolean;
   targetQuantity: number;
   claimedQuantity: number;
   approvedQuantity: number;
   remainingQuantity: number;
+};
+
+export type WorkBatchSizeItem = {
+  id: string;
+  label: string;
+  quantity: number;
+  sortOrder: number;
+  isActive: boolean;
 };
 
 export type WorkBatchItem = {
@@ -514,6 +523,9 @@ export type WorkBatchItem = {
 
   operations:
     BatchOperationItem[];
+
+  sizes:
+    WorkBatchSizeItem[];
 };
 
 export type WorkBatchListResponse = {
@@ -541,6 +553,11 @@ export type CreateWorkBatchInput = {
   operations: Array<{
     operationId: string;
     targetQuantity?: number;
+  }>;
+
+  sizes: Array<{
+    label: string;
+    quantity: number;
   }>;
 };
 
@@ -590,6 +607,24 @@ export function createWorkBatch(
     {
       method:
         "POST",
+      body:
+        JSON.stringify(
+          input,
+        ),
+    },
+  );
+}
+
+export function updateWorkBatch(
+  id: string,
+  input:
+    CreateWorkBatchInput,
+): Promise<WorkBatchItem> {
+  return apiFetch<WorkBatchItem>(
+    `/admin/batches/${id}`,
+    {
+      method:
+        "PATCH",
       body:
         JSON.stringify(
           input,
@@ -1053,6 +1088,8 @@ export type PendingWorkEntry = {
   modelName:
     | string
     | null;
+  workBatchSizeId: string;
+  sizeLabel: string;
   operationId: string;
   operationName: string;
 

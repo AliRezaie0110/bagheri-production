@@ -688,6 +688,8 @@ function WorkApprovals({
                     : ""}
                   {" · "}
                   {entry.operationName}
+                  {" · سایز "}
+                  {entry.sizeLabel}
                 </p>
               </div>
 

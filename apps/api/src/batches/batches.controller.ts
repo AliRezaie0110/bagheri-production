@@ -74,6 +74,22 @@ export class BatchesController {
     );
   }
 
+  @Patch(':id')
+  update(
+    @CurrentUser()
+    actor: AuthenticatedUser,
+    @Param('id')
+    id: string,
+    @Body()
+    dto: CreateWorkBatchDto,
+  ) {
+    return this.batches.update(
+      actor.id,
+      id,
+      dto,
+    );
+  }
+
   @Patch(':id/status')
   changeStatus(
     @CurrentUser()

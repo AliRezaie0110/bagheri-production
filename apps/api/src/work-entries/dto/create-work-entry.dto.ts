@@ -11,6 +11,9 @@ export class CreateWorkEntryDto {
   @IsString()
   batchOperationId!: string;
 
+  @IsString()
+  workBatchSizeId!: string;
+
   @IsInt()
   @Min(1)
   @Max(1000000)

@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 
 import {
+  ApprovalStatus,
   BatchStatus,
   OwnerPricingType,
 } from '../generated/prisma/enums';
@@ -42,7 +43,7 @@ export class BatchesService {
           code:
             'OWNER_UNIT_PRICE_REQUIRED',
           message:
-            'Ø¨Ø±Ø§ÛŒ Ù‚ÛŒÙ…Øªâ€ŒÚ¯Ø°Ø§Ø±ÛŒ Ø¯Ø§Ù†Ù‡â€ŒØ§ÛŒØŒ Ù‚ÛŒÙ…Øª Ù‡Ø± Ø¹Ø¯Ø¯ Ø§Ù„Ø²Ø§Ù…ÛŒ Ø§Ø³Øª.',
+            'برای قیمت‌گذاری دانه‌ای، قیمت هر عدد الزامی است.',
         });
       }
 
@@ -54,7 +55,7 @@ export class BatchesService {
           code:
             'OWNER_FIXED_AMOUNT_NOT_ALLOWED',
           message:
-            'Ø¨Ø±Ø§ÛŒ Ù‚ÛŒÙ…Øªâ€ŒÚ¯Ø°Ø§Ø±ÛŒ Ø¯Ø§Ù†Ù‡â€ŒØ§ÛŒ Ù…Ø¨Ù„Øº Ú©Ù„ Ù†Ø¨Ø§ÛŒØ¯ ÙˆØ§Ø±Ø¯ Ø´ÙˆØ¯.',
+            'برای قیمت‌گذاری دانه‌ای مبلغ کل نباید وارد شود.',
         });
       }
 
@@ -71,7 +72,7 @@ export class BatchesService {
         code:
           'OWNER_FIXED_AMOUNT_REQUIRED',
         message:
-          'Ø¨Ø±Ø§ÛŒ Ù‚ÛŒÙ…Øªâ€ŒÚ¯Ø°Ø§Ø±ÛŒ Ù…Ø¨Ù„Øº Ø«Ø§Ø¨ØªØŒ Ù…Ø¨Ù„Øº Ú©Ù„ Ø§Ù„Ø²Ø§Ù…ÛŒ Ø§Ø³Øª.',
+          'برای مبلغ ثابت، مبلغ کل الزامی است.',
       });
     }
 
@@ -83,7 +84,7 @@ export class BatchesService {
         code:
           'OWNER_UNIT_PRICE_NOT_ALLOWED',
         message:
-          'Ø¨Ø±Ø§ÛŒ Ù…Ø¨Ù„Øº Ø«Ø§Ø¨ØªØŒ Ù‚ÛŒÙ…Øª Ø¯Ø§Ù†Ù‡â€ŒØ§ÛŒ Ù†Ø¨Ø§ÛŒØ¯ ÙˆØ§Ø±Ø¯ Ø´ÙˆØ¯.',
+          'برای مبلغ ثابت، قیمت دانه‌ای نباید وارد شود.',
       });
     }
 
@@ -93,6 +94,114 @@ export class BatchesService {
       ownerFixedAmount:
         dto.ownerFixedAmount,
     };
+  }
+
+  private normalizedSizes(
+    dto: CreateWorkBatchDto,
+  ) {
+    const sizes =
+      dto.sizes.map(
+        (item, index) => ({
+          label:
+            item.label.trim(),
+          quantity:
+            item.quantity,
+          sortOrder:
+            index,
+        }),
+      );
+
+    if (
+      sizes.some(
+        (item) =>
+          !item.label,
+      )
+    ) {
+      throw new BadRequestException({
+        code:
+          'BATCH_SIZE_LABEL_REQUIRED',
+        message:
+          'نام یا شماره سایز نمی‌تواند خالی باشد.',
+      });
+    }
+
+    const normalizedLabels =
+      sizes.map(
+        (item) =>
+          item.label
+            .toLocaleLowerCase(
+              'fa-IR',
+            ),
+      );
+
+    if (
+      new Set(
+        normalizedLabels,
+      ).size !==
+      normalizedLabels.length
+    ) {
+      throw new BadRequestException({
+        code:
+          'DUPLICATE_BATCH_SIZE',
+        message:
+          'یک سایز در این سری‌کار بیشتر از یک بار وارد شده است.',
+      });
+    }
+
+    const total =
+      sizes.reduce(
+        (
+          sum,
+          item,
+        ) =>
+          sum +
+          item.quantity,
+        0,
+      );
+
+    if (
+      total !==
+      dto.totalQuantity
+    ) {
+      throw new BadRequestException({
+        code:
+          'BATCH_SIZE_TOTAL_MISMATCH',
+        message:
+          'جمع تعداد سایزها باید دقیقاً با تعداد کل سری‌کار برابر باشد.',
+        sizeTotal:
+          total,
+        batchTotal:
+          dto.totalQuantity,
+      });
+    }
+
+    return sizes;
+  }
+
+  private operationIds(
+    dto: CreateWorkBatchDto,
+  ) {
+    const operationIds =
+      dto.operations.map(
+        (item) =>
+          item.operationId,
+      );
+
+    if (
+      new Set(
+        operationIds,
+      ).size !==
+      operationIds.length
+    ) {
+      throw new BadRequestException({
+        code:
+          'DUPLICATE_BATCH_OPERATION',
+        message:
+          'یک عملیات در سری‌کار دوبار انتخاب شده است.',
+      });
+    }
+
+    return operationIds;
   }
 
   private async presentBatch(
@@ -118,20 +227,44 @@ export class BatchesService {
         string | null;
     },
   ) {
-    const owner =
-      await this.prisma.owner.findUnique({
-        where: {
-          id: batch.ownerId,
-        },
-      });
-
-    const batchOperations =
-      await this.prisma.batchOperation.findMany({
-        where: {
-          workBatchId:
-            batch.id,
-        },
-      });
+    const [
+      owner,
+      batchOperations,
+      sizes,
+    ] =
+      await Promise.all([
+        this.prisma.owner.findUnique({
+          where: {
+            id: batch.ownerId,
+          },
+        }),
+        this.prisma.batchOperation.findMany({
+          where: {
+            workBatchId:
+              batch.id,
+          },
+          orderBy: {
+            createdAt:
+              'asc',
+          },
+        }),
+        this.prisma.workBatchSize.findMany({
+          where: {
+            workBatchId:
+              batch.id,
+          },
+          orderBy: [
+            {
+              sortOrder:
+                'asc',
+            },
+            {
+              createdAt:
+                'asc',
+            },
+          ],
+        }),
+      ]);
 
     const operationIds =
       batchOperations.map(
@@ -202,6 +335,21 @@ export class BatchesService {
         null,
       note:
         batch.note,
+      sizes:
+        sizes.map(
+          (size) => ({
+            id:
+              size.id,
+            label:
+              size.label,
+            quantity:
+              size.quantity,
+            sortOrder:
+              size.sortOrder,
+            isActive:
+              size.isActive,
+          }),
+        ),
       operations:
         batchOperations.map(
           (item) => {
@@ -221,6 +369,8 @@ export class BatchesService {
               isOperationActive:
                 operation?.isActive ??
                 false,
+              isBatchOperationActive:
+                item.isActive,
               targetQuantity:
                 item.targetQuantity,
               claimedQuantity:
@@ -344,7 +494,7 @@ export class BatchesService {
         code:
           'BATCH_NOT_FOUND',
         message:
-          'Ø³Ø±ÛŒâ€ŒÚ©Ø§Ø± Ù¾ÛŒØ¯Ø§ Ù†Ø´Ø¯.',
+          'سری‌کار پیدا نشد.',
       });
     }
 
@@ -361,25 +511,10 @@ export class BatchesService {
       this.pricing(dto);
 
     const operationIds =
-      dto.operations.map(
-        (item) =>
-          item.operationId,
-      );
+      this.operationIds(dto);
 
-    const uniqueIds =
-      new Set(operationIds);
-
-    if (
-      uniqueIds.size !==
-      operationIds.length
-    ) {
-      throw new BadRequestException({
-        code:
-          'DUPLICATE_BATCH_OPERATION',
-        message:
-          'ÛŒÚ© Ø¹Ù…Ù„ÛŒØ§Øª Ø¯Ø± Ø³Ø±ÛŒâ€ŒÚ©Ø§Ø± Ø¯ÙˆØ¨Ø§Ø± Ø§Ù†ØªØ®Ø§Ø¨ Ø´Ø¯Ù‡ Ø§Ø³Øª.',
-      });
-    }
+    const sizes =
+      this.normalizedSizes(dto);
 
     try {
       const batch =
@@ -401,7 +536,7 @@ export class BatchesService {
                 code:
                   'OWNER_NOT_ACTIVE',
                 message:
-                  'ØµØ§Ø­Ø¨Ú©Ø§Ø± ÙØ¹Ø§Ù„ Ù†ÛŒØ³Øª ÛŒØ§ Ù¾ÛŒØ¯Ø§ Ù†Ø´Ø¯.',
+                  'صاحبکار فعال نیست یا پیدا نشد.',
               });
             }
 
@@ -428,7 +563,7 @@ export class BatchesService {
                 code:
                   'INVALID_BATCH_OPERATIONS',
                 message:
-                  'ÛŒÚ© ÛŒØ§ Ú†Ù†Ø¯ Ø¹Ù…Ù„ÛŒØ§Øª Ø§Ù†ØªØ®Ø§Ø¨â€ŒØ´Ø¯Ù‡ Ù…Ø¹ØªØ¨Ø± ÛŒØ§ ÙØ¹Ø§Ù„ Ù†ÛŒØ³ØªÙ†Ø¯.',
+                  'یک یا چند عملیات انتخاب‌شده معتبر یا فعال نیستند.',
               });
             }
 
@@ -466,24 +601,45 @@ export class BatchesService {
                 },
               });
 
-            await tx.batchOperation.createMany({
-              data:
-                dto.operations.map(
-                  (item) => ({
-                    workBatchId:
-                      created.id,
-                    operationId:
-                      item.operationId,
-                    targetQuantity:
-                      item.targetQuantity ??
-                      dto.totalQuantity,
-                    claimedQuantity:
-                      0,
-                    approvedQuantity:
-                      0,
-                  }),
-                ),
-            });
+            await Promise.all([
+              tx.batchOperation.createMany({
+                data:
+                  dto.operations.map(
+                    (item) => ({
+                      workBatchId:
+                        created.id,
+                      operationId:
+                        item.operationId,
+                      targetQuantity:
+                        item.targetQuantity ??
+                        dto.totalQuantity,
+                      claimedQuantity:
+                        0,
+                      approvedQuantity:
+                        0,
+                      isActive:
+                        true,
+                    }),
+                  ),
+              }),
+              tx.workBatchSize.createMany({
+                data:
+                  sizes.map(
+                    (size) => ({
+                      workBatchId:
+                        created.id,
+                      label:
+                        size.label,
+                      quantity:
+                        size.quantity,
+                      sortOrder:
+                        size.sortOrder,
+                      isActive:
+                        true,
+                    }),
+                  ),
+              }),
+            ]);
 
             await tx.auditLog.create({
               data: {
@@ -523,6 +679,7 @@ export class BatchesService {
                           dto.totalQuantity,
                       }),
                     ),
+                  sizes,
                 },
               },
             });
@@ -535,26 +692,587 @@ export class BatchesService {
         batch,
       );
     } catch (error) {
-      if (
-        typeof error === 'object' &&
-        error !== null &&
-        'code' in error &&
-        (
-          error as {
-            code?: string;
-          }
-        ).code === 'P2002'
-      ) {
-        throw new ConflictException({
-          code:
-            'BATCH_CODE_ALREADY_EXISTS',
-          message:
-            'Ø§ÛŒÙ† Ú©Ø¯ Ø³Ø±ÛŒâ€ŒÚ©Ø§Ø± Ù‚Ø¨Ù„Ø§Ù‹ Ø«Ø¨Øª Ø´Ø¯Ù‡ Ø§Ø³Øª.',
-        });
-      }
-
-      throw error;
+      this.rethrowUnique(error);
     }
+  }
+
+  async update(
+    actorId: string,
+    id: string,
+    dto: CreateWorkBatchDto,
+  ) {
+    const pricing =
+      this.pricing(dto);
+
+    const operationIds =
+      this.operationIds(dto);
+
+    const sizes =
+      this.normalizedSizes(dto);
+
+    try {
+      const updated =
+        await this.prisma.$transaction(
+          async (tx) => {
+            const locked =
+              await tx.$queryRaw<
+                Array<{
+                  id: string;
+                }>
+              >`
+                SELECT "id"
+                FROM "WorkBatch"
+                WHERE "id" = ${id}
+                FOR UPDATE
+              `;
+
+            if (
+              locked.length !==
+              1
+            ) {
+              throw new NotFoundException({
+                code:
+                  'BATCH_NOT_FOUND',
+                message:
+                  'سری‌کار پیدا نشد.',
+              });
+            }
+
+            const existing =
+              await tx.workBatch.findUnique({
+                where: {
+                  id,
+                },
+              });
+
+            if (!existing) {
+              throw new NotFoundException({
+                code:
+                  'BATCH_NOT_FOUND',
+                message:
+                  'سری‌کار پیدا نشد.',
+              });
+            }
+
+            const owner =
+              await tx.owner.findUnique({
+                where: {
+                  id:
+                    dto.ownerId,
+                },
+              });
+
+            if (
+              !owner ||
+              (
+                !owner.isActive &&
+                owner.id !==
+                  existing.ownerId
+              )
+            ) {
+              throw new BadRequestException({
+                code:
+                  'OWNER_NOT_ACTIVE',
+                message:
+                  'صاحبکار فعال نیست یا پیدا نشد.',
+              });
+            }
+
+            const existingOperations =
+              await tx.batchOperation.findMany({
+                where: {
+                  workBatchId:
+                    id,
+                },
+              });
+
+            const existingOperationMap =
+              new Map(
+                existingOperations.map(
+                  (item) => [
+                    item.operationId,
+                    item,
+                  ],
+                ),
+              );
+
+            const newOperationIds =
+              operationIds.filter(
+                (operationId) =>
+                  !existingOperationMap.has(
+                    operationId,
+                  ),
+              );
+
+            if (
+              newOperationIds.length >
+              0
+            ) {
+              const activeNew =
+                await tx.operation.findMany({
+                  where: {
+                    id: {
+                      in:
+                        newOperationIds,
+                    },
+                    isActive:
+                      true,
+                  },
+                  select: {
+                    id: true,
+                  },
+                });
+
+              if (
+                activeNew.length !==
+                newOperationIds.length
+              ) {
+                throw new BadRequestException({
+                  code:
+                    'INVALID_BATCH_OPERATIONS',
+                  message:
+                    'عملیات جدید انتخاب‌شده معتبر یا فعال نیست.',
+                });
+              }
+            }
+
+            const highestClaimed =
+              existingOperations.reduce(
+                (
+                  highest,
+                  item,
+                ) =>
+                  Math.max(
+                    highest,
+                    item.claimedQuantity,
+                  ),
+                0,
+              );
+
+            if (
+              dto.totalQuantity <
+              highestClaimed
+            ) {
+              throw new ConflictException({
+                code:
+                  'BATCH_TOTAL_BELOW_CLAIMED',
+                message:
+                  'تعداد کل سری‌کار نمی‌تواند از کار ثبت‌شده کمتر شود.',
+                minimumQuantity:
+                  highestClaimed,
+              });
+            }
+
+            for (
+              const item of
+              dto.operations
+            ) {
+              const target =
+                item.targetQuantity ??
+                dto.totalQuantity;
+
+              const current =
+                existingOperationMap.get(
+                  item.operationId,
+                );
+
+              if (
+                current &&
+                target <
+                  current.claimedQuantity
+              ) {
+                throw new ConflictException({
+                  code:
+                    'BATCH_OPERATION_TARGET_BELOW_CLAIMED',
+                  message:
+                    'تعداد هدف عملیات نمی‌تواند از تعداد ثبت‌شده کمتر شود.',
+                  operationId:
+                    item.operationId,
+                  minimumQuantity:
+                    current.claimedQuantity,
+                });
+              }
+
+              if (current) {
+                await tx.batchOperation.update({
+                  where: {
+                    id:
+                      current.id,
+                  },
+                  data: {
+                    targetQuantity:
+                      target,
+                    isActive:
+                      true,
+                  },
+                });
+              } else {
+                await tx.batchOperation.create({
+                  data: {
+                    workBatchId:
+                      id,
+                    operationId:
+                      item.operationId,
+                    targetQuantity:
+                      target,
+                    claimedQuantity:
+                      0,
+                    approvedQuantity:
+                      0,
+                    isActive:
+                      true,
+                  },
+                });
+              }
+            }
+
+            const selectedOperationIds =
+              new Set(
+                operationIds,
+              );
+
+            for (
+              const item of
+              existingOperations
+            ) {
+              if (
+                !selectedOperationIds.has(
+                  item.operationId,
+                ) &&
+                item.isActive
+              ) {
+                await tx.batchOperation.update({
+                  where: {
+                    id:
+                      item.id,
+                  },
+                  data: {
+                    isActive:
+                      false,
+                  },
+                });
+              }
+            }
+
+            const existingSizes =
+              await tx.workBatchSize.findMany({
+                where: {
+                  workBatchId:
+                    id,
+                },
+              });
+
+            const liveEntries =
+              await tx.workEntry.findMany({
+                where: {
+                  workBatchSize: {
+                    workBatchId:
+                      id,
+                  },
+                  status: {
+                    in: [
+                      ApprovalStatus.PENDING,
+                      ApprovalStatus.APPROVED,
+                    ],
+                  },
+                },
+                select: {
+                  workBatchSizeId:
+                    true,
+                  batchOperationId:
+                    true,
+                  quantity:
+                    true,
+                },
+              });
+
+            const usedPerSizeOperation =
+              new Map<
+                string,
+                number
+              >();
+
+            for (
+              const entry of
+              liveEntries
+            ) {
+              const key =
+                `${entry.workBatchSizeId}:${entry.batchOperationId}`;
+
+              usedPerSizeOperation.set(
+                key,
+                (
+                  usedPerSizeOperation.get(
+                    key,
+                  ) ?? 0
+                ) +
+                  entry.quantity,
+              );
+            }
+
+            const minimumBySize =
+              new Map<
+                string,
+                number
+              >();
+
+            for (
+              const [
+                key,
+                quantity,
+              ] of
+              usedPerSizeOperation
+            ) {
+              const sizeId =
+                key.split(
+                  ':',
+                )[0];
+
+              minimumBySize.set(
+                sizeId,
+                Math.max(
+                  minimumBySize.get(
+                    sizeId,
+                  ) ?? 0,
+                  quantity,
+                ),
+              );
+            }
+
+            const existingSizeByLabel =
+              new Map(
+                existingSizes.map(
+                  (size) => [
+                    size.label
+                      .trim()
+                      .toLocaleLowerCase(
+                        'fa-IR',
+                      ),
+                    size,
+                  ],
+                ),
+              );
+
+            const selectedSizeIds =
+              new Set<string>();
+
+            for (
+              const size of
+              sizes
+            ) {
+              const key =
+                size.label
+                  .toLocaleLowerCase(
+                    'fa-IR',
+                  );
+
+              const current =
+                existingSizeByLabel.get(
+                  key,
+                );
+
+              if (current) {
+                const minimum =
+                  minimumBySize.get(
+                    current.id,
+                  ) ?? 0;
+
+                if (
+                  size.quantity <
+                  minimum
+                ) {
+                  throw new ConflictException({
+                    code:
+                      'BATCH_SIZE_QUANTITY_BELOW_CLAIMED',
+                    message:
+                      'تعداد این سایز نمی‌تواند از تعداد ثبت‌شده آن کمتر شود.',
+                    sizeId:
+                      current.id,
+                    sizeLabel:
+                      current.label,
+                    minimumQuantity:
+                      minimum,
+                  });
+                }
+
+                await tx.workBatchSize.update({
+                  where: {
+                    id:
+                      current.id,
+                  },
+                  data: {
+                    label:
+                      size.label,
+                    quantity:
+                      size.quantity,
+                    sortOrder:
+                      size.sortOrder,
+                    isActive:
+                      true,
+                  },
+                });
+
+                selectedSizeIds.add(
+                  current.id,
+                );
+              } else {
+                const createdSize =
+                  await tx.workBatchSize.create({
+                    data: {
+                      workBatchId:
+                        id,
+                      label:
+                        size.label,
+                      quantity:
+                        size.quantity,
+                      sortOrder:
+                        size.sortOrder,
+                      isActive:
+                        true,
+                    },
+                  });
+
+                selectedSizeIds.add(
+                  createdSize.id,
+                );
+              }
+            }
+
+            for (
+              const size of
+              existingSizes
+            ) {
+              if (
+                !selectedSizeIds.has(
+                  size.id,
+                ) &&
+                size.isActive
+              ) {
+                await tx.workBatchSize.update({
+                  where: {
+                    id:
+                      size.id,
+                  },
+                  data: {
+                    isActive:
+                      false,
+                  },
+                });
+              }
+            }
+
+            const batch =
+              await tx.workBatch.update({
+                where: {
+                  id,
+                },
+                data: {
+                  code:
+                    dto.code
+                      .trim()
+                      .toUpperCase(),
+                  ownerId:
+                    dto.ownerId,
+                  modelName:
+                    dto.modelName?.trim() ||
+                    null,
+                  totalQuantity:
+                    dto.totalQuantity,
+                  ownerPricingType:
+                    dto.ownerPricingType,
+                  ownerUnitPrice:
+                    pricing.ownerUnitPrice,
+                  ownerFixedAmount:
+                    pricing.ownerFixedAmount,
+                  startDate:
+                    dto.startDate
+                      ? new Date(
+                          dto.startDate,
+                        )
+                      : existing.startDate,
+                  note:
+                    dto.note?.trim() ||
+                    null,
+                },
+              });
+
+            await tx.auditLog.create({
+              data: {
+                actorId,
+                action:
+                  'WORK_BATCH_UPDATED',
+                entityType:
+                  'WorkBatch',
+                entityId:
+                  id,
+                beforeData: {
+                  code:
+                    existing.code,
+                  ownerId:
+                    existing.ownerId,
+                  modelName:
+                    existing.modelName,
+                  totalQuantity:
+                    existing.totalQuantity,
+                },
+                afterData: {
+                  code:
+                    batch.code,
+                  ownerId:
+                    batch.ownerId,
+                  modelName:
+                    batch.modelName,
+                  totalQuantity:
+                    batch.totalQuantity,
+                  operations:
+                    dto.operations.map(
+                      (item) => ({
+                        operationId:
+                          item.operationId,
+                        targetQuantity:
+                          item.targetQuantity ??
+                          dto.totalQuantity,
+                      }),
+                    ),
+                  sizes,
+                },
+              },
+            });
+
+            return batch;
+          },
+        );
+
+      return this.presentBatch(
+        updated,
+      );
+    } catch (error) {
+      this.rethrowUnique(error);
+    }
+  }
+
+  private rethrowUnique(
+    error: unknown,
+  ): never {
+    if (
+      typeof error === 'object' &&
+      error !== null &&
+      'code' in error &&
+      (
+        error as {
+          code?: string;
+        }
+      ).code === 'P2002'
+    ) {
+      throw new ConflictException({
+        code:
+          'BATCH_CODE_OR_SIZE_ALREADY_EXISTS',
+        message:
+          'کد سری‌کار یا نام سایز تکراری است.',
+      });
+    }
+
+    throw error;
   }
 
   async changeStatus(
@@ -577,7 +1295,7 @@ export class BatchesService {
               code:
                 'BATCH_NOT_FOUND',
               message:
-                'Ø³Ø±ÛŒâ€ŒÚ©Ø§Ø± Ù¾ÛŒØ¯Ø§ Ù†Ø´Ø¯.',
+                'سری‌کار پیدا نشد.',
             });
           }
 

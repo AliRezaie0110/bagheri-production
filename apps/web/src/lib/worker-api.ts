@@ -20,6 +20,13 @@ export type AvailableWorkItem = {
   claimedQuantity: number;
   approvedQuantity: number;
   remainingQuantity: number;
+  sizes: Array<{
+    id: string;
+    label: string;
+    quantity: number;
+    claimedQuantity: number;
+    remainingQuantity: number;
+  }>;
 };
 
 export type WorkerAvailableResponse = {
@@ -34,6 +41,8 @@ export type WorkerHistoryEntry = {
   modelName:
     | string
     | null;
+  workBatchSizeId: string;
+  sizeLabel: string;
   operationId: string;
   operationName: string;
   quantity: number;
@@ -113,6 +122,7 @@ export type EmployeeAccountResponse = {
 
 export type CreateWorkerEntryInput = {
   batchOperationId: string;
+  workBatchSizeId: string;
   quantity: number;
 };
 

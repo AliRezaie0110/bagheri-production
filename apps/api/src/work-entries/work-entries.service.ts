@@ -135,6 +135,8 @@ export class WorkEntriesService {
     const batchOperations =
       await this.prisma.batchOperation.findMany({
         where: {
+          isActive:
+            true,
           workBatch: {
             status:
               BatchStatus.ACTIVE,
@@ -143,8 +145,26 @@ export class WorkEntriesService {
         include: {
           operation:
             true,
-          workBatch:
-            true,
+          workBatch: {
+            include: {
+              sizes: {
+                where: {
+                  isActive:
+                    true,
+                },
+                orderBy: [
+                  {
+                    sortOrder:
+                      'asc',
+                  },
+                  {
+                    createdAt:
+                      'asc',
+                  },
+                ],
+              },
+            },
+          },
         },
         orderBy: {
           createdAt:
@@ -152,43 +172,131 @@ export class WorkEntriesService {
         },
       });
 
-    const items =
+    const batchOperationIds =
       batchOperations.map(
-        (item) => ({
-          batchOperationId:
-            item.id,
-          batchId:
-            item.workBatchId,
-          batchCode:
-            item.workBatch.code,
-          modelName:
-            item.workBatch.modelName,
-          operationId:
-            item.operationId,
-          operationName:
-            item.operation.name,
-          targetQuantity:
-            item.targetQuantity,
-          claimedQuantity:
-            item.claimedQuantity,
-          approvedQuantity:
-            item.approvedQuantity,
-          remainingQuantity:
-            Math.max(
-              0,
-              item.targetQuantity -
-                item.claimedQuantity,
-            ),
-        }),
+        (item) =>
+          item.id,
       );
 
-    return {
-      items:
-        items.filter(
+    const groupedUsage =
+      batchOperationIds.length >
+      0
+        ? await this.prisma.workEntry.groupBy({
+            by: [
+              'batchOperationId',
+              'workBatchSizeId',
+            ],
+            where: {
+              batchOperationId: {
+                in:
+                  batchOperationIds,
+              },
+              status: {
+                in: [
+                  ApprovalStatus.PENDING,
+                  ApprovalStatus.APPROVED,
+                ],
+              },
+            },
+            _sum: {
+              quantity:
+                true,
+            },
+          })
+        : [];
+
+    const usageMap =
+      new Map(
+        groupedUsage.map(
+          (item) => [
+            `${item.batchOperationId}:${item.workBatchSizeId}`,
+            item._sum.quantity ??
+              0,
+          ],
+        ),
+      );
+
+    const items =
+      batchOperations
+        .map(
+          (item) => {
+            const operationRemaining =
+              Math.max(
+                0,
+                item.targetQuantity -
+                  item.claimedQuantity,
+              );
+
+            const sizes =
+              item.workBatch.sizes
+                .map(
+                  (size) => {
+                    const claimedQuantity =
+                      usageMap.get(
+                        `${item.id}:${size.id}`,
+                      ) ?? 0;
+
+                    return {
+                      id:
+                        size.id,
+                      label:
+                        size.label,
+                      quantity:
+                        size.quantity,
+                      claimedQuantity,
+                      remainingQuantity:
+                        Math.max(
+                          0,
+                          Math.min(
+                            operationRemaining,
+                            size.quantity -
+                              claimedQuantity,
+                          ),
+                        ),
+                    };
+                  },
+                )
+                .filter(
+                  (size) =>
+                    size.remainingQuantity >
+                    0,
+                );
+
+            return {
+              batchOperationId:
+                item.id,
+              batchId:
+                item.workBatchId,
+              batchCode:
+                item.workBatch.code,
+              modelName:
+                item.workBatch.modelName,
+              operationId:
+                item.operationId,
+              operationName:
+                item.operation.name,
+              targetQuantity:
+                item.targetQuantity,
+              claimedQuantity:
+                item.claimedQuantity,
+              approvedQuantity:
+                item.approvedQuantity,
+              remainingQuantity:
+                operationRemaining,
+              sizes,
+            };
+          },
+        )
+        .filter(
           (item) =>
             item.remainingQuantity >
-            0,
-        ),
+              0 &&
+            item.sizes.length >
+              0,
+        );
+
+    return {
+      items,
     };
   }
 
@@ -222,7 +330,7 @@ export class WorkEntriesService {
           });
         }
 
-        const locked =
+        const lockedOperation =
           await tx.$queryRaw<
             Array<{
               id: string;
@@ -235,7 +343,8 @@ export class WorkEntriesService {
           `;
 
         if (
-          locked.length !== 1
+          lockedOperation.length !==
+          1
         ) {
           throw new NotFoundException({
             code:
@@ -245,19 +354,54 @@ export class WorkEntriesService {
           });
         }
 
-        const batchOperation =
-          await tx.batchOperation.findUnique({
-            where: {
-              id:
-                dto.batchOperationId,
-            },
-            include: {
-              operation:
-                true,
-              workBatch:
-                true,
-            },
+        const lockedSize =
+          await tx.$queryRaw<
+            Array<{
+              id: string;
+            }>
+          >`
+            SELECT "id"
+            FROM "WorkBatchSize"
+            WHERE "id" = ${dto.workBatchSizeId}
+            FOR UPDATE
+          `;
+
+        if (
+          lockedSize.length !==
+          1
+        ) {
+          throw new NotFoundException({
+            code:
+              'BATCH_SIZE_NOT_FOUND',
+            message:
+              'سایز سری‌کار پیدا نشد.',
           });
+        }
+
+        const [
+          batchOperation,
+          batchSize,
+        ] =
+          await Promise.all([
+            tx.batchOperation.findUnique({
+              where: {
+                id:
+                  dto.batchOperationId,
+              },
+              include: {
+                operation:
+                  true,
+                workBatch:
+                  true,
+              },
+            }),
+            tx.workBatchSize.findUnique({
+              where: {
+                id:
+                  dto.workBatchSizeId,
+              },
+            }),
+          ]);
 
         if (!batchOperation) {
           throw new NotFoundException({
@@ -265,6 +409,26 @@ export class WorkEntriesService {
               'BATCH_OPERATION_NOT_FOUND',
             message:
               'عملیات سری‌کار پیدا نشد.',
+          });
+        }
+
+        if (!batchSize) {
+          throw new NotFoundException({
+            code:
+              'BATCH_SIZE_NOT_FOUND',
+            message:
+              'سایز سری‌کار پیدا نشد.',
+          });
+        }
+
+        if (
+          !batchOperation.isActive
+        ) {
+          throw new ConflictException({
+            code:
+              'BATCH_OPERATION_NOT_ACTIVE',
+            message:
+              'این عملیات برای سری‌کار غیرفعال شده است.',
           });
         }
 
@@ -280,24 +444,70 @@ export class WorkEntriesService {
           });
         }
 
-        const remainingQuantity =
-          batchOperation.targetQuantity -
-          batchOperation.claimedQuantity;
-
         if (
-          dto.quantity >
-          remainingQuantity
+          !batchSize.isActive ||
+          batchSize.workBatchId !==
+            batchOperation.workBatchId
         ) {
           throw new ConflictException({
             code:
-              'WORK_QUANTITY_EXCEEDS_REMAINING',
+              'BATCH_SIZE_NOT_ACTIVE',
             message:
-              'تعداد ثبت‌شده بیشتر از ظرفیت باقی‌مانده است.',
-            availableQuantity:
-              Math.max(
-                0,
-                remainingQuantity,
-              ),
+              'این سایز برای سری‌کار انتخاب‌شده فعال نیست.',
+          });
+        }
+
+        const operationRemaining =
+          batchOperation.targetQuantity -
+          batchOperation.claimedQuantity;
+
+        const sizeUsage =
+          await tx.workEntry.aggregate({
+            where: {
+              batchOperationId:
+                batchOperation.id,
+              workBatchSizeId:
+                batchSize.id,
+              status: {
+                in: [
+                  ApprovalStatus.PENDING,
+                  ApprovalStatus.APPROVED,
+                ],
+              },
+            },
+            _sum: {
+              quantity:
+                true,
+            },
+          });
+
+        const sizeClaimed =
+          sizeUsage._sum.quantity ??
+          0;
+
+        const sizeRemaining =
+          batchSize.quantity -
+          sizeClaimed;
+
+        const availableQuantity =
+          Math.max(
+            0,
+            Math.min(
+              operationRemaining,
+              sizeRemaining,
+            ),
+          );
+
+        if (
+          dto.quantity >
+          availableQuantity
+        ) {
+          throw new ConflictException({
+            code:
+              'WORK_SIZE_QUANTITY_EXCEEDS_REMAINING',
+            message:
+              'تعداد ثبت‌شده بیشتر از ظرفیت باقی‌مانده این سایز و عملیات است.',
+            availableQuantity,
           });
         }
 
@@ -358,6 +568,8 @@ export class WorkEntriesService {
               workerId,
               batchOperationId:
                 batchOperation.id,
+              workBatchSizeId:
+                batchSize.id,
               quantity:
                 dto.quantity,
               unitRate,
@@ -401,6 +613,10 @@ export class WorkEntriesService {
                 batchOperation.workBatchId,
               batchCode:
                 batchOperation.workBatch.code,
+              workBatchSizeId:
+                batchSize.id,
+              sizeLabel:
+                batchSize.label,
               operationId:
                 batchOperation.operationId,
               operationName:
@@ -426,6 +642,10 @@ export class WorkEntriesService {
             batchOperation.workBatch.code,
           modelName:
             batchOperation.workBatch.modelName,
+          workBatchSizeId:
+            batchSize.id,
+          sizeLabel:
+            batchSize.label,
           operationId:
             batchOperation.operationId,
           operationName:
@@ -443,7 +663,7 @@ export class WorkEntriesService {
           createdAt:
             entry.createdAt.toISOString(),
           remainingQuantity:
-            remainingQuantity -
+            availableQuantity -
             dto.quantity,
         };
       },
@@ -467,6 +687,8 @@ export class WorkEntriesService {
                 true,
             },
           },
+          workBatchSize:
+            true,
         },
         orderBy: {
           createdAt:
@@ -491,6 +713,10 @@ export class WorkEntriesService {
             modelName:
               entry.batchOperation
                 .workBatch.modelName,
+            workBatchSizeId:
+              entry.workBatchSizeId,
+            sizeLabel:
+              entry.workBatchSize.label,
             operationId:
               entry.batchOperation
                 .operationId,
@@ -547,6 +773,8 @@ export class WorkEntriesService {
                 true,
             },
           },
+          workBatchSize:
+            true,
         },
         orderBy: {
           createdAt:
@@ -578,6 +806,10 @@ export class WorkEntriesService {
               modelName:
                 entry.batchOperation
                   .workBatch.modelName,
+              workBatchSizeId:
+                entry.workBatchSizeId,
+              sizeLabel:
+                entry.workBatchSize.label,
               operationId:
                 entry.batchOperation
                   .operationId,
@@ -682,6 +914,8 @@ export class WorkEntriesService {
                       true,
                   },
                 },
+                workBatchSize:
+                  true,
               },
             });
 
@@ -789,6 +1023,10 @@ export class WorkEntriesService {
             batchId:
               entry.batchOperation
                 .workBatchId,
+            workBatchSizeId:
+              entry.workBatchSizeId,
+            sizeLabel:
+              entry.workBatchSize.label,
             batchOperationId:
               entry.batchOperationId,
             operationId:
@@ -879,6 +1117,10 @@ export class WorkEntriesService {
         result.batchId,
       batchCode:
         result.batchCode,
+      workBatchSizeId:
+        result.workBatchSizeId,
+      sizeLabel:
+        result.sizeLabel,
       batchOperationId:
         result.batchOperationId,
       operationId:
@@ -963,6 +1205,8 @@ export class WorkEntriesService {
                       true,
                   },
                 },
+                workBatchSize:
+                  true,
               },
             });
 
@@ -1097,6 +1341,10 @@ export class WorkEntriesService {
             batchCode:
               entry.batchOperation
                 .workBatch.code,
+            workBatchSizeId:
+              entry.workBatchSizeId,
+            sizeLabel:
+              entry.workBatchSize.label,
             batchOperationId:
               entry.batchOperationId,
             operationId:
@@ -1136,6 +1384,10 @@ export class WorkEntriesService {
         result.batchId,
       batchCode:
         result.batchCode,
+      workBatchSizeId:
+        result.workBatchSizeId,
+      sizeLabel:
+        result.sizeLabel,
       batchOperationId:
         result.batchOperationId,
       operationId:

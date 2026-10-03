@@ -147,6 +147,7 @@ model WorkBatch {
   updatedAt DateTime @updatedAt
 
   operations    BatchOperation[]
+  sizes         WorkBatchSize[]
   ownerPayments OwnerPayment[]
 
   @@index([ownerId, status])
@@ -191,6 +192,7 @@ model BatchOperation {
   targetQuantity   Int
   claimedQuantity  Int @default(0)
   approvedQuantity Int @default(0)
+  isActive         Boolean @default(true)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -205,10 +207,29 @@ model BatchOperation {
   @@index([operationId])
 }
 
+model WorkBatchSize {
+  id          String @id @default(cuid())
+  workBatchId String
+  label       String @db.VarChar(50)
+  quantity    Int
+  sortOrder   Int @default(0)
+  isActive    Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  workBatch  WorkBatch   @relation(fields: [workBatchId], references: [id], onDelete: Cascade)
+  workEntries WorkEntry[]
+
+  @@unique([workBatchId, label])
+  @@index([workBatchId, isActive, sortOrder])
+}
+
 model WorkEntry {
   id               String @id @default(cuid())
   workerId         String
   batchOperationId String
+  workBatchSizeId  String
 
   quantity    Int
   unitRate    Decimal @db.Decimal(18, 0)
@@ -227,10 +248,12 @@ model WorkEntry {
 
   worker         User           @relation("WorkerEntries", fields: [workerId], references: [id])
   batchOperation BatchOperation @relation(fields: [batchOperationId], references: [id])
+  workBatchSize  WorkBatchSize  @relation(fields: [workBatchSizeId], references: [id])
   reviewedBy     User?          @relation("WorkEntryReviewer", fields: [reviewedById], references: [id])
 
   @@index([workerId, createdAt])
   @@index([batchOperationId, status])
+  @@index([workBatchSizeId, status])
   @@index([status, createdAt])
 }
 
