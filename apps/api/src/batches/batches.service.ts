@@ -377,6 +377,8 @@ export class BatchesService {
                 item.claimedQuantity,
               approvedQuantity:
                 item.approvedQuantity,
+              unitRate:
+                item.unitRate.toString(),
               remainingQuantity:
                 Math.max(
                   0,
@@ -617,6 +619,8 @@ export class BatchesService {
                         0,
                       approvedQuantity:
                         0,
+                      unitRate:
+                        item.unitRate,
                       isActive:
                         true,
                     }),
@@ -677,6 +681,8 @@ export class BatchesService {
                         targetQuantity:
                           item.targetQuantity ??
                           dto.totalQuantity,
+                        unitRate:
+                          item.unitRate,
                       }),
                     ),
                   sizes,
@@ -751,6 +757,18 @@ export class BatchesService {
                   'BATCH_NOT_FOUND',
                 message:
                   'سری‌کار پیدا نشد.',
+              });
+            }
+
+            if (
+              existing.status ===
+              BatchStatus.ARCHIVED
+            ) {
+              throw new ConflictException({
+                code:
+                  'BATCH_ARCHIVED_LOCKED',
+                message:
+                  'سری‌کار بایگانی‌شده قفل است. برای اصلاح ابتدا وضعیت آن را تغییر دهید.',
               });
             }
 
@@ -894,6 +912,10 @@ export class BatchesService {
               }
 
               if (current) {
+                const rateChanged =
+                  current.unitRate.toString() !==
+                  item.unitRate;
+
                 await tx.batchOperation.update({
                   where: {
                     id:
@@ -902,10 +924,47 @@ export class BatchesService {
                   data: {
                     targetQuantity:
                       target,
+                    unitRate:
+                      item.unitRate,
                     isActive:
                       true,
                   },
                 });
+
+                if (rateChanged) {
+                  await tx.$executeRaw`
+                    UPDATE "WorkEntry"
+                    SET
+                      "unitRate" = ${item.unitRate}::numeric,
+                      "totalAmount" = "quantity" * ${item.unitRate}::numeric,
+                      "updatedAt" = NOW()
+                    WHERE "batchOperationId" = ${current.id}
+                  `;
+
+                  await tx.auditLog.create({
+                    data: {
+                      actorId,
+                      action:
+                        'BATCH_OPERATION_RATE_CHANGED',
+                      entityType:
+                        'BatchOperation',
+                      entityId:
+                        current.id,
+                      beforeData: {
+                        unitRate:
+                          current.unitRate.toString(),
+                      },
+                      afterData: {
+                        unitRate:
+                          item.unitRate,
+                        workBatchId:
+                          id,
+                        operationId:
+                          item.operationId,
+                      },
+                    },
+                  });
+                }
               } else {
                 await tx.batchOperation.create({
                   data: {
@@ -919,6 +978,8 @@ export class BatchesService {
                       0,
                     approvedQuantity:
                       0,
+                    unitRate:
+                      item.unitRate,
                     isActive:
                       true,
                   },
@@ -1232,6 +1293,8 @@ export class BatchesService {
                         targetQuantity:
                           item.targetQuantity ??
                           dto.totalQuantity,
+                        unitRate:
+                          item.unitRate,
                       }),
                     ),
                   sizes,
@@ -1249,6 +1312,100 @@ export class BatchesService {
     } catch (error) {
       this.rethrowUnique(error);
     }
+  }
+
+  async remove(
+    actorId: string,
+    id: string,
+  ) {
+    return this.prisma.$transaction(
+      async (tx) => {
+        const existing =
+          await tx.workBatch.findUnique({
+            where: {
+              id,
+            },
+          });
+
+        if (!existing) {
+          throw new NotFoundException({
+            code:
+              'BATCH_NOT_FOUND',
+            message:
+              'سری‌کار پیدا نشد.',
+          });
+        }
+
+        const [
+          workEntryCount,
+          ownerPaymentCount,
+        ] =
+          await Promise.all([
+            tx.workEntry.count({
+              where: {
+                batchOperation: {
+                  workBatchId:
+                    id,
+                },
+              },
+            }),
+            tx.ownerPayment.count({
+              where: {
+                workBatchId:
+                  id,
+              },
+            }),
+          ]);
+
+        if (
+          workEntryCount > 0 ||
+          ownerPaymentCount > 0
+        ) {
+          throw new ConflictException({
+            code:
+              'BATCH_DELETE_HAS_HISTORY',
+            message:
+              'این سری‌کار سابقه کارکرد یا حساب دارد و قابل حذف نیست؛ آن را لغو یا بایگانی کنید.',
+          });
+        }
+
+        await tx.auditLog.create({
+          data: {
+            actorId,
+            action:
+              'WORK_BATCH_DELETED',
+            entityType:
+              'WorkBatch',
+            entityId:
+              id,
+            beforeData: {
+              code:
+                existing.code,
+              ownerId:
+                existing.ownerId,
+              modelName:
+                existing.modelName,
+              totalQuantity:
+                existing.totalQuantity,
+              status:
+                existing.status,
+            },
+          },
+        });
+
+        await tx.workBatch.delete({
+          where: {
+            id,
+          },
+        });
+
+        return {
+          mode:
+            'DELETED' as const,
+          id,
+        };
+      },
+    );
   }
 
   private rethrowUnique(

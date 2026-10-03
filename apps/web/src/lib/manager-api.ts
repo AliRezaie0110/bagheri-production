@@ -286,6 +286,23 @@ export function setOwnerActive(
   );
 }
 
+export function deleteOwner(
+  id: string,
+): Promise<{
+  mode:
+    | "DELETED"
+    | "DEACTIVATED";
+  id: string;
+}> {
+  return apiFetch(
+    `/admin/owners/${id}`,
+    {
+      method:
+        "DELETE",
+    },
+  );
+}
+
 // =========================================================
 // OPERATIONS + RATE HISTORY
 // =========================================================
@@ -444,6 +461,23 @@ export function changeOperationRate(
   );
 }
 
+export function deleteOperation(
+  id: string,
+): Promise<{
+  mode:
+    | "DELETED"
+    | "DEACTIVATED";
+  id: string;
+}> {
+  return apiFetch(
+    `/admin/operations/${id}`,
+    {
+      method:
+        "DELETE",
+    },
+  );
+}
+
 // =========================================================
 // WORK BATCHES
 // =========================================================
@@ -467,6 +501,7 @@ export type BatchOperationItem = {
   targetQuantity: number;
   claimedQuantity: number;
   approvedQuantity: number;
+  unitRate: string;
   remainingQuantity: number;
 };
 
@@ -553,6 +588,7 @@ export type CreateWorkBatchInput = {
   operations: Array<{
     operationId: string;
     targetQuantity?: number;
+    unitRate: string;
   }>;
 
   sizes: Array<{
@@ -650,6 +686,21 @@ export function changeBatchStatus(
     },
   );
 }
+export function deleteWorkBatch(
+  id: string,
+): Promise<{
+  mode: "DELETED";
+  id: string;
+}> {
+  return apiFetch(
+    `/admin/batches/${id}`,
+    {
+      method:
+        "DELETE",
+    },
+  );
+}
+
 // =========================================================
 // EMPLOYEE ACCOUNTS
 // =========================================================
@@ -1916,6 +1967,20 @@ export function managerError(
       "OPERATION_NOT_FOUND"
     ) {
       return "عملیات موردنظر پیدا نشد.";
+    }
+
+    if (
+      caught.code ===
+      "BATCH_ARCHIVED_LOCKED"
+    ) {
+      return "سری‌کار بایگانی‌شده قفل است؛ ابتدا وضعیت آن را تغییر دهید.";
+    }
+
+    if (
+      caught.code ===
+      "BATCH_DELETE_HAS_HISTORY"
+    ) {
+      return "این سری‌کار سابقه واقعی دارد و قابل حذف نیست؛ آن را لغو یا بایگانی کنید.";
     }
 
     if (

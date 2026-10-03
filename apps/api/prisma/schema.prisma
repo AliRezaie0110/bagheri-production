@@ -192,6 +192,7 @@ model BatchOperation {
   targetQuantity   Int
   claimedQuantity  Int @default(0)
   approvedQuantity Int @default(0)
+  unitRate         Decimal @db.Decimal(18, 0)
   isActive         Boolean @default(true)
 
   createdAt DateTime @default(now())

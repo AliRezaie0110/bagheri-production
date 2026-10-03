@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Patch,
@@ -92,6 +93,20 @@ export class OperationsController {
       actor.id,
       id,
       dto,
+    );
+  }
+
+
+  @Delete(':id')
+  remove(
+    @CurrentUser()
+    actor: AuthenticatedUser,
+    @Param('id')
+    id: string,
+  ) {
+    return this.operations.remove(
+      actor.id,
+      id,
     );
   }
 

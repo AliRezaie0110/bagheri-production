@@ -281,6 +281,8 @@ export class WorkEntriesService {
                 item.claimedQuantity,
               approvedQuantity:
                 item.approvedQuantity,
+              unitRate:
+                item.unitRate.toString(),
               remainingQuantity:
                 operationRemaining,
               sizes,
@@ -511,48 +513,8 @@ export class WorkEntriesService {
           });
         }
 
-        const today =
-          this.today();
-
-        const rate =
-          await tx.operationRate.findFirst({
-            where: {
-              operationId:
-                batchOperation.operationId,
-              effectiveFrom: {
-                lte:
-                  today,
-              },
-              OR: [
-                {
-                  effectiveTo:
-                    null,
-                },
-                {
-                  effectiveTo: {
-                    gte:
-                      today,
-                  },
-                },
-              ],
-            },
-            orderBy: {
-              effectiveFrom:
-                'desc',
-            },
-          });
-
-        if (!rate) {
-          throw new BadRequestException({
-            code:
-              'OPERATION_RATE_NOT_FOUND',
-            message:
-              'برای این عملیات نرخ فعال تعریف نشده است.',
-          });
-        }
-
         const unitRate =
-          rate.amount.toString();
+          batchOperation.unitRate.toString();
 
         const totalAmount =
           (

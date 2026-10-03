@@ -600,4 +600,117 @@ export class OperationsService {
           .slice(0, 10),
     };
   }
+
+  async remove(
+    actorId: string,
+    id: string,
+  ) {
+    return this.prisma.$transaction(
+      async (tx) => {
+        const operation =
+          await tx.operation.findUnique({
+            where: {
+              id,
+            },
+          });
+
+        if (!operation) {
+          throw new NotFoundException({
+            code:
+              'OPERATION_NOT_FOUND',
+            message:
+              'عملیات پیدا نشد.',
+          });
+        }
+
+        const usageCount =
+          await tx.batchOperation.count({
+            where: {
+              operationId:
+                id,
+            },
+          });
+
+        if (usageCount > 0) {
+          const updated =
+            await tx.operation.update({
+              where: {
+                id,
+              },
+              data: {
+                isActive:
+                  false,
+              },
+            });
+
+          await tx.auditLog.create({
+            data: {
+              actorId,
+              action:
+                'OPERATION_DELETE_CONVERTED_TO_DEACTIVATE',
+              entityType:
+                'Operation',
+              entityId:
+                id,
+              beforeData: {
+                name:
+                  operation.name,
+                isActive:
+                  operation.isActive,
+              },
+              afterData: {
+                isActive:
+                  updated.isActive,
+                usageCount,
+              },
+            },
+          });
+
+          return {
+            mode:
+              'DEACTIVATED' as const,
+            id,
+          };
+        }
+
+        await tx.auditLog.create({
+          data: {
+            actorId,
+            action:
+              'OPERATION_DELETED',
+            entityType:
+              'Operation',
+            entityId:
+              id,
+            beforeData: {
+              name:
+                operation.name,
+              isActive:
+                operation.isActive,
+            },
+          },
+        });
+
+        await tx.operationRate.deleteMany({
+          where: {
+            operationId:
+              id,
+          },
+        });
+
+        await tx.operation.delete({
+          where: {
+            id,
+          },
+        });
+
+        return {
+          mode:
+            'DELETED' as const,
+          id,
+        };
+      },
+    );
+  }
+
 }

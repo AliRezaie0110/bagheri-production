@@ -10,6 +10,7 @@ import {
   Search,
   ToggleLeft,
   ToggleRight,
+  Trash2,
   X,
 } from "lucide-react";
 
@@ -22,6 +23,7 @@ import {
 
 import {
   createOwner,
+  deleteOwner,
   listOwners,
   managerError,
   OwnerInput,
@@ -386,6 +388,33 @@ export function OwnersSection() {
     }
   }
 
+  async function remove(
+    item: OwnerItem,
+  ) {
+    const confirmed =
+      window.confirm(
+        `صاحبکار «${item.name}» حذف شود؟ اگر سابقه سری‌کار یا حساب داشته باشد فقط غیرفعال می‌شود.`,
+      );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setError(null);
+
+    try {
+      await deleteOwner(
+        item.id,
+      );
+
+      await load(true);
+    } catch (caught) {
+      setError(
+        managerError(caught),
+      );
+    }
+  }
+
   const activeCount =
     items.filter(
       (
@@ -624,6 +653,21 @@ export function OwnersSection() {
                   >
                     <Edit3 className="size-3.5" />
                     ویرایش
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={
+                      () => {
+                        void remove(
+                          item,
+                        );
+                      }
+                    }
+                    className="inline-flex h-10 items-center gap-2 rounded-xl border border-red-100 bg-red-50 px-3 text-xs font-black text-red-600"
+                  >
+                    <Trash2 className="size-3.5" />
+                    حذف
                   </button>
 
                   <button

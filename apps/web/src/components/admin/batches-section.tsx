@@ -12,6 +12,7 @@ import {
   RefreshCw,
   Search,
   Scissors,
+  Trash2,
   X,
 } from "lucide-react";
 
@@ -28,6 +29,7 @@ import {
   changeBatchStatus,
   createOperation,
   createWorkBatch,
+  deleteWorkBatch,
   CreateWorkBatchInput,
   listBatches,
   listOperations,
@@ -63,6 +65,7 @@ const statusLabels: Record<
 type SelectedOperation = {
   selected: boolean;
   target: string;
+  rate: string;
 };
 
 type SelectedOperations =
@@ -372,6 +375,33 @@ export function BatchesSection() {
     }
   }
 
+  async function removeBatch(
+    batch: WorkBatchItem,
+  ) {
+    const confirmed =
+      window.confirm(
+        `سری‌کار ${batch.code} حذف شود؟ فقط سری‌های تستیِ بدون سابقه قابل حذف کامل هستند.`,
+      );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setError(null);
+
+    try {
+      await deleteWorkBatch(
+        batch.id,
+      );
+
+      await load(true);
+    } catch (caught) {
+      setError(
+        managerError(caught),
+      );
+    }
+  }
+
   const activeCount =
     items.filter(
       (
@@ -641,6 +671,17 @@ export function BatchesSection() {
                     >
                       <Pencil className="size-3.5" />
                       ویرایش
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        void removeBatch(batch);
+                      }}
+                      className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-red-100 bg-red-50 px-3 text-[11px] font-black text-red-600"
+                    >
+                      <Trash2 className="size-3.5" />
+                      حذف
                     </button>
 
                     <select
@@ -927,6 +968,10 @@ function BatchModal({
         nextSelected[operation.id] = {
           selected: existing?.isBatchOperationActive ?? false,
           target: existing ? String(existing.targetQuantity) : "",
+          rate:
+            existing?.unitRate ??
+            operation.currentRate ??
+            "",
         };
       }
 
@@ -1011,7 +1056,13 @@ function BatchModal({
 
       for (const operation of selectableOperations) {
         next[operation.id] = {
-          ...(next[operation.id] ?? { target: "", selected: false }),
+          ...(next[operation.id] ?? {
+            target: "",
+            rate:
+              operation.currentRate ??
+              "",
+            selected: false,
+          }),
           selected: !allOperationsSelected,
         };
       }
@@ -1051,6 +1102,9 @@ function BatchModal({
         [created.id]: {
           selected: true,
           target: "",
+          rate:
+            created.currentRate ??
+            newOperationRate,
         },
       }));
       setNewOperationName("");
@@ -1122,11 +1176,19 @@ function BatchModal({
         return {
           operationId: operation.id,
           ...(target ? { targetQuantity: Number(target) } : {}),
+          unitRate:
+            selected[operation.id]?.rate.trim() ??
+            "",
         };
       });
 
     if (operationPayload.length === 0) {
       setError("حداقل یک عملیات را برای سری‌کار انتخاب کنید.");
+      return;
+    }
+
+    if (operationPayload.some((item) => !/^[1-9]\d*$/.test(item.unitRate))) {
+      setError("نرخ همه عملیات‌های انتخاب‌شده را به‌صورت عدد صحیح وارد کنید.");
       return;
     }
 
@@ -1464,6 +1526,9 @@ function BatchModal({
                       const state = selected[operation.id] ?? {
                         selected: false,
                         target: "",
+                        rate:
+                          operation.currentRate ??
+                          "",
                       };
 
                       return (
@@ -1510,30 +1575,56 @@ function BatchModal({
                           </button>
 
                           {state.selected && (
-                            <div className="mt-3 border-t border-[var(--line)] pt-3">
-                              <label className="mb-1.5 block text-[9px] font-black text-[var(--muted)]">
-                                تعداد هدف عملیات
-                              </label>
-                              <input
-                                dir="ltr"
-                                inputMode="numeric"
-                                value={state.target}
-                                onChange={(event) =>
-                                  setSelected((current) => ({
-                                    ...current,
-                                    [operation.id]: {
-                                      selected: true,
-                                      target: event.target.value.replace(/\D/g, ""),
-                                    },
-                                  }))
-                                }
-                                className="h-10 w-full rounded-xl border border-[var(--line)] bg-white px-3 text-center text-xs font-black outline-none focus:border-[var(--brand)]"
-                                placeholder={
-                                  totalQuantity
-                                    ? `خالی = ${faNumber(totalQuantity)}`
-                                    : "خالی = تعداد کل سری"
-                                }
-                              />
+                            <div className="mt-3 grid gap-2 border-t border-[var(--line)] pt-3 sm:grid-cols-2">
+                              <div>
+                                <label className="mb-1.5 block text-[9px] font-black text-[var(--muted)]">
+                                  تعداد هدف عملیات
+                                </label>
+                                <input
+                                  dir="ltr"
+                                  inputMode="numeric"
+                                  value={state.target}
+                                  onChange={(event) =>
+                                    setSelected((current) => ({
+                                      ...current,
+                                      [operation.id]: {
+                                        ...state,
+                                        selected: true,
+                                        target: event.target.value.replace(/\D/g, ""),
+                                      },
+                                    }))
+                                  }
+                                  className="h-10 w-full rounded-xl border border-[var(--line)] bg-white px-3 text-center text-xs font-black outline-none focus:border-[var(--brand)]"
+                                  placeholder={
+                                    totalQuantity
+                                      ? `خالی = ${faNumber(totalQuantity)}`
+                                      : "خالی = تعداد کل سری"
+                                  }
+                                />
+                              </div>
+
+                              <div>
+                                <label className="mb-1.5 block text-[9px] font-black text-[var(--muted)]">
+                                  نرخ این عملیات در همین سری
+                                </label>
+                                <input
+                                  dir="ltr"
+                                  inputMode="numeric"
+                                  value={state.rate}
+                                  onChange={(event) =>
+                                    setSelected((current) => ({
+                                      ...current,
+                                      [operation.id]: {
+                                        ...state,
+                                        selected: true,
+                                        rate: event.target.value.replace(/\D/g, ""),
+                                      },
+                                    }))
+                                  }
+                                  className="h-10 w-full rounded-xl border border-[var(--line)] bg-white px-3 text-center text-xs font-black outline-none focus:border-[var(--brand)]"
+                                  placeholder="تومان"
+                                />
+                              </div>
                             </div>
                           )}
                         </div>

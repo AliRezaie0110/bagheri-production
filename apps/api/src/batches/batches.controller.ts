@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Patch,
@@ -87,6 +88,20 @@ export class BatchesController {
       actor.id,
       id,
       dto,
+    );
+  }
+
+
+  @Delete(':id')
+  remove(
+    @CurrentUser()
+    actor: AuthenticatedUser,
+    @Param('id')
+    id: string,
+  ) {
+    return this.batches.remove(
+      actor.id,
+      id,
     );
   }
 

@@ -10,6 +10,7 @@ import {
   Scissors,
   ToggleLeft,
   ToggleRight,
+  Trash2,
   X,
 } from "lucide-react";
 
@@ -23,6 +24,7 @@ import {
 import {
   changeOperationRate,
   createOperation,
+  deleteOperation,
   getOperation,
   listOperations,
   managerError,
@@ -485,6 +487,33 @@ export function OperationsSection() {
     }
   }
 
+  async function remove(
+    item: OperationItem,
+  ) {
+    const confirmed =
+      window.confirm(
+        `عملیات «${item.name}» حذف شود؟ اگر سابقه داشته باشد فقط غیرفعال می‌شود.`,
+      );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setError(null);
+
+    try {
+      await deleteOperation(
+        item.id,
+      );
+
+      await load(true);
+    } catch (caught) {
+      setError(
+        managerError(caught),
+      );
+    }
+  }
+
   const activeCount =
     items.filter(
       (
@@ -675,6 +704,21 @@ export function OperationsSection() {
                   >
                     <History className="size-3.5" />
                     نرخ و سابقه
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={
+                      () => {
+                        void remove(
+                          item,
+                        );
+                      }
+                    }
+                    className="inline-flex h-10 items-center gap-2 rounded-xl border border-red-100 bg-red-50 px-3 text-xs font-black text-red-600"
+                  >
+                    <Trash2 className="size-3.5" />
+                    حذف
                   </button>
 
                   <button
