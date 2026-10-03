@@ -213,9 +213,9 @@ export function BatchesSection() {
     statusFilter,
     setStatusFilter,
   ] =
-    useState<
-      BatchStatus | ""
-    >("");
+    useState<BatchStatus>(
+      "ACTIVE",
+    );
 
   const [
     createOpen,
@@ -271,8 +271,7 @@ export function BatchesSection() {
                   undefined,
 
                 status:
-                  statusFilter ||
-                  undefined,
+                  statusFilter,
 
                 page:
                   1,
@@ -474,7 +473,54 @@ export function BatchesSection() {
         />
       </div>
 
-      <div className="mb-4 grid gap-2 rounded-[22px] border border-[var(--line)] bg-white p-3 lg:grid-cols-[1fr_190px_190px]">
+      <div className="mb-3 overflow-x-auto pb-1">
+        <div className="flex min-w-max gap-2 rounded-[22px] border border-[var(--line)] bg-white p-2">
+          {(
+            [
+              "ACTIVE",
+              "COMPLETED",
+              "ARCHIVED",
+              "CANCELLED",
+            ] as BatchStatus[]
+          ).map(
+            (
+              status,
+            ) => {
+              const active =
+                statusFilter ===
+                status;
+
+              return (
+                <button
+                  type="button"
+                  key={
+                    status
+                  }
+                  onClick={
+                    () =>
+                      setStatusFilter(
+                        status,
+                      )
+                  }
+                  className={`h-10 rounded-xl px-4 text-xs font-black transition ${
+                    active
+                      ? "bg-[var(--brand)] text-white shadow-sm"
+                      : "text-[var(--muted)] hover:bg-[var(--surface-soft)] hover:text-[var(--text)]"
+                  }`}
+                >
+                  {
+                    statusLabels[
+                      status
+                    ]
+                  }
+                </button>
+              );
+            },
+          )}
+        </div>
+      </div>
+
+      <div className="mb-4 grid gap-2 rounded-[22px] border border-[var(--line)] bg-white p-3 lg:grid-cols-[1fr_190px]">
         <div className="relative">
           <Search className="pointer-events-none absolute right-4 top-1/2 size-4 -translate-y-1/2 text-[var(--muted)]" />
 
@@ -531,45 +577,6 @@ export function BatchesSection() {
               </option>
             ),
           )}
-        </select>
-
-        <select
-          value={
-            statusFilter
-          }
-          onChange={(
-            event,
-          ) =>
-            setStatusFilter(
-              event.target
-                .value as
-                | BatchStatus
-                | "",
-            )
-          }
-          className={
-            inputClass
-          }
-        >
-          <option value="">
-            همه وضعیت‌ها
-          </option>
-
-          <option value="ACTIVE">
-            فعال
-          </option>
-
-          <option value="COMPLETED">
-            تکمیل‌شده
-          </option>
-
-          <option value="CANCELLED">
-            لغوشده
-          </option>
-
-          <option value="ARCHIVED">
-            بایگانی
-          </option>
         </select>
       </div>
 
