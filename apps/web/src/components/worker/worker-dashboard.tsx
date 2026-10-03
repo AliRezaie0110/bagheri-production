@@ -19,6 +19,7 @@ import {
   LoaderCircle,
   PackageCheck,
   RefreshCw,
+  Search,
   Send,
   WalletCards,
   XCircle,
@@ -122,6 +123,28 @@ function money(
   return `${formatNumber(
     value,
   )} تومان`;
+}
+
+function normalizeOperationSearch(
+  value: string,
+): string {
+  return value
+    .trim()
+    .toLocaleLowerCase(
+      "fa-IR",
+    )
+    .replaceAll(
+      "ي",
+      "ی",
+    )
+    .replaceAll(
+      "ك",
+      "ک",
+    )
+    .replace(
+      /\s+/g,
+      " ",
+    );
 }
 
 function formatDate(
@@ -269,6 +292,12 @@ export function WorkerDashboard({
   const [
     selectedBatchOperationId,
     setSelectedBatchOperationId,
+  ] =
+    useState("");
+
+  const [
+    operationSearch,
+    setOperationSearch,
   ] =
     useState("");
 
@@ -446,6 +475,35 @@ export function WorkerDashboard({
       [
         available,
         selectedBatchId,
+      ],
+    );
+
+  const filteredOperations =
+    useMemo(
+      () => {
+        const query =
+          normalizeOperationSearch(
+            operationSearch,
+          );
+
+        if (
+          !query
+        ) {
+          return operations;
+        }
+
+        return operations.filter(
+          (item) =>
+            normalizeOperationSearch(
+              item.operationName,
+            ).includes(
+              query,
+            ),
+        );
+      },
+      [
+        operationSearch,
+        operations,
       ],
     );
 
@@ -1090,6 +1148,10 @@ export function WorkerDashboard({
                               id,
                             );
 
+                            setOperationSearch(
+                              "",
+                            );
+
                             const first =
                               available.find(
                                 (
@@ -1153,7 +1215,7 @@ export function WorkerDashboard({
 
                           <span className="text-[10px] text-[var(--muted)]">
                             {formatNumber(
-                              operations.length,
+                              filteredOperations.length,
                             )} مورد
                           </span>
                         </div>
@@ -1169,8 +1231,32 @@ export function WorkerDashboard({
                             </p>
                           </div>
 
+                          <div className="relative mb-3">
+                            <Search className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+
+                            <input
+                              type="search"
+                              value={
+                                operationSearch
+                              }
+                              onChange={
+                                (
+                                  event,
+                                ) =>
+                                  setOperationSearch(
+                                    event.target.value,
+                                  )
+                              }
+                              placeholder="جستجوی عملیات..."
+                              aria-label="جستجوی عملیات"
+                              className="h-11 w-full rounded-2xl border border-slate-200 bg-white pr-10 pl-3 text-sm font-bold outline-none transition placeholder:text-slate-400 focus:border-[var(--brand)] focus:ring-4 focus:ring-[var(--brand-soft)]"
+                            />
+                          </div>
+
                           <div className="grid max-h-[250px] gap-2 overflow-y-auto overscroll-contain pl-1 [scrollbar-gutter:stable] sm:max-h-[240px]">
-                            {operations.map(
+                            {filteredOperations.length >
+                            0 ? (
+                              filteredOperations.map(
                               (
                                 item,
                               ) => {
@@ -1238,6 +1324,11 @@ export function WorkerDashboard({
                                   </button>
                                 );
                               },
+                            )
+                            ) : (
+                              <div className="rounded-[20px] border border-dashed border-slate-300 bg-white/70 px-4 py-8 text-center text-xs font-bold text-slate-500">
+                                عملیاتی با این عبارت پیدا نشد.
+                              </div>
                             )}
                           </div>
                         </div>
