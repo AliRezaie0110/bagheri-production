@@ -5,6 +5,7 @@ import { JalaliDateInput } from "@/components/ui/jalali-date-input";
 import {
   Boxes,
   Check,
+  ChevronDown,
   LoaderCircle,
   PackagePlus,
   Pencil,
@@ -233,6 +234,14 @@ export function BatchesSection() {
     setEditingBatch,
   ] =
     useState<WorkBatchItem | null>(
+      null,
+    );
+
+  const [
+    expandedBatchId,
+    setExpandedBatchId,
+  ] =
+    useState<string | null>(
       null,
     );
 
@@ -628,251 +637,284 @@ export function BatchesSection() {
           </p>
         </div>
       ) : (
-        <div className="space-y-3">
-          {items.map(
-            (
-              batch,
-            ) => (
+        <div className="space-y-2">
+          {items.map((batch) => {
+            const expanded =
+              expandedBatchId ===
+              batch.id;
+
+            return (
               <article
-                key={
-                  batch.id
-                }
-                className="rounded-[24px] border border-[var(--line)] bg-white p-4 sm:p-5"
+                key={batch.id}
+                className="overflow-hidden rounded-[22px] border border-[var(--line)] bg-white"
               >
-                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                  <div>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setExpandedBatchId(
+                      expanded
+                        ? null
+                        : batch.id,
+                    )
+                  }
+                  className="flex w-full items-center gap-3 p-4 text-right transition hover:bg-[var(--surface-soft)] sm:p-5"
+                >
+                  <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
-                      <p className="text-base font-black">
+                      <p className="text-sm font-black sm:text-base">
                         {batch.code}
                       </p>
 
                       <StatusBadge
-                        status={
-                          batch.status
-                        }
+                        status={batch.status}
                       />
                     </div>
 
-                    <p className="mt-1 text-xs text-[var(--muted)]">
+                    <p className="mt-1 truncate text-[11px] font-bold text-[var(--muted)] sm:text-xs">
                       {batch.modelName
                         ? `${batch.modelName} · `
                         : ""}
-                      {batch.owner
-                        ?.name ??
+                      {batch.owner?.name ??
                         "صاحبکار نامشخص"}
                     </p>
                   </div>
 
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setEditingBatch(batch)}
-                      className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-[var(--line)] bg-white px-3 text-[11px] font-black text-[var(--brand)]"
-                    >
-                      <Pencil className="size-3.5" />
-                      ویرایش
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        void removeBatch(batch);
-                      }}
-                      className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-red-100 bg-red-50 px-3 text-[11px] font-black text-red-600"
-                    >
-                      <Trash2 className="size-3.5" />
-                      حذف
-                    </button>
-
-                    <select
-                      value={batch.status}
-                      onChange={(event) => {
-                        void updateStatus(
-                          batch,
-                          event.target.value as BatchStatus,
-                        );
-                      }}
-                      className="h-10 rounded-xl border border-[var(--line)] bg-white px-3 text-[11px] font-black outline-none"
-                    >
-                      <option value="ACTIVE">فعال</option>
-                      <option value="COMPLETED">تکمیل‌شده</option>
-                      <option value="CANCELLED">لغوشده</option>
-                      <option value="ARCHIVED">بایگانی</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div className="mt-4 grid grid-cols-2 gap-2 rounded-2xl bg-[var(--surface-soft)] p-3 sm:grid-cols-4">
-                  <Info
-                    label="تعداد کل"
-                    value={`${faNumber(
-                      batch.totalQuantity,
-                    )} عدد`}
-                  />
-
-                  <Info
-                    label="شروع"
-                    value={
-                      faDate(
-                        batch.startDate,
-                      )
-                    }
-                  />
-
-                  <Info
-                    label="قرارداد"
-                    value={
-                      batch.ownerPricingType ===
-                      "PER_PIECE"
-                        ? "دانه‌ای"
-                        : "مبلغ ثابت"
-                    }
-                  />
-
-                  <Info
-                    label="مبلغ"
-                    value={
-                      batch.ownerPricingType ===
-                      "PER_PIECE"
-                        ? `${money(
-                            batch.ownerUnitPrice ??
-                              "0",
-                          )} / عدد`
-                        : money(
-                            batch.ownerFixedAmount ??
-                              "0",
-                          )
-                    }
-                  />
-                </div>
-
-                <div className="mt-3 rounded-2xl border border-[var(--line)] p-3">
-                  <p className="text-[9px] font-black text-[var(--muted)]">
-                    سایزبندی سری
-                  </p>
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    {(batch.sizes ?? [])
-                      .filter((size) => size.isActive)
-                      .map((size) => (
-                        <span
-                          key={size.id}
-                          className="rounded-xl bg-[var(--surface-soft)] px-3 py-2 text-[10px] font-black"
-                        >
-                          سایز {size.label}: {faNumber(size.quantity)} عدد
-                        </span>
-                      ))}
-                  </div>
-                </div>
-
-                {batch.note && (
-                  <div className="mt-3 rounded-2xl border border-[var(--line)] p-3">
+                  <div className="hidden shrink-0 text-left sm:block">
                     <p className="text-[9px] font-black text-[var(--muted)]">
-                      توضیح سری
+                      تعداد کل
                     </p>
+                    <p className="mt-1 text-xs font-black">
+                      {faNumber(
+                        batch.totalQuantity,
+                      )}{" "}
+                      عدد
+                    </p>
+                  </div>
 
-                    <p className="mt-1 text-xs leading-6">
-                      {batch.note}
-                    </p>
+                  <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-[var(--surface-soft)] text-[var(--muted)]">
+                    <ChevronDown
+                      className={`size-4 transition-transform ${
+                        expanded
+                          ? "rotate-180"
+                          : ""
+                      }`}
+                    />
+                  </div>
+                </button>
+
+                {expanded && (
+                  <div className="border-t border-[var(--line)] p-4 sm:p-5">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setEditingBatch(
+                            batch,
+                          )
+                        }
+                        className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-[var(--line)] bg-white px-3 text-[11px] font-black text-[var(--brand)]"
+                      >
+                        <Pencil className="size-3.5" />
+                        ویرایش
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          void removeBatch(
+                            batch,
+                          );
+                        }}
+                        className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-red-100 bg-red-50 px-3 text-[11px] font-black text-red-600"
+                      >
+                        <Trash2 className="size-3.5" />
+                        حذف
+                      </button>
+
+                      <select
+                        value={batch.status}
+                        onChange={(event) => {
+                          void updateStatus(
+                            batch,
+                            event.target
+                              .value as BatchStatus,
+                          );
+                        }}
+                        className="h-10 rounded-xl border border-[var(--line)] bg-white px-3 text-[11px] font-black outline-none"
+                      >
+                        <option value="ACTIVE">
+                          فعال
+                        </option>
+                        <option value="COMPLETED">
+                          تکمیل‌شده
+                        </option>
+                        <option value="CANCELLED">
+                          لغوشده
+                        </option>
+                        <option value="ARCHIVED">
+                          بایگانی
+                        </option>
+                      </select>
+                    </div>
+
+                    <div className="mt-4 grid grid-cols-2 gap-2 rounded-2xl bg-[var(--surface-soft)] p-3 sm:grid-cols-4">
+                      <Info
+                        label="تعداد کل"
+                        value={`${faNumber(
+                          batch.totalQuantity,
+                        )} عدد`}
+                      />
+
+                      <Info
+                        label="شروع"
+                        value={faDate(
+                          batch.startDate,
+                        )}
+                      />
+
+                      <Info
+                        label="قرارداد"
+                        value={
+                          batch.ownerPricingType ===
+                          "PER_PIECE"
+                            ? "دانه‌ای"
+                            : "مبلغ ثابت"
+                        }
+                      />
+
+                      <Info
+                        label="مبلغ"
+                        value={
+                          batch.ownerPricingType ===
+                          "PER_PIECE"
+                            ? `${money(
+                                batch.ownerUnitPrice ??
+                                  "0",
+                              )} / عدد`
+                            : money(
+                                batch.ownerFixedAmount ??
+                                  "0",
+                              )
+                        }
+                      />
+                    </div>
+
+                    <div className="mt-3 rounded-2xl border border-[var(--line)] p-3">
+                      <p className="text-[9px] font-black text-[var(--muted)]">
+                        سایزبندی سری
+                      </p>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {(batch.sizes ?? [])
+                          .filter(
+                            (size) =>
+                              size.isActive,
+                          )
+                          .map((size) => (
+                            <span
+                              key={size.id}
+                              className="rounded-xl bg-[var(--surface-soft)] px-3 py-2 text-[10px] font-black"
+                            >
+                              سایز {size.label}: {faNumber(size.quantity)} عدد
+                            </span>
+                          ))}
+                      </div>
+                    </div>
+
+                    {batch.note && (
+                      <div className="mt-3 rounded-2xl border border-[var(--line)] p-3">
+                        <p className="text-[9px] font-black text-[var(--muted)]">
+                          توضیح سری
+                        </p>
+                        <p className="mt-1 text-xs leading-6">
+                          {batch.note}
+                        </p>
+                      </div>
+                    )}
+
+                    <div className="mt-4">
+                      <p className="mb-2 text-[10px] font-black text-[var(--muted)]">
+                        وضعیت عملیات
+                      </p>
+
+                      <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+                        {batch.operations
+                          .filter(
+                            (operation) =>
+                              operation.isBatchOperationActive,
+                          )
+                          .map((operation) => {
+                            const approvedPercent =
+                              operation.targetQuantity >
+                              0
+                                ? Math.min(
+                                    100,
+                                    Math.round(
+                                      (operation.approvedQuantity /
+                                        operation.targetQuantity) *
+                                        100,
+                                    ),
+                                  )
+                                : 0;
+
+                            return (
+                              <div
+                                key={operation.batchOperationId}
+                                className="rounded-2xl border border-[var(--line)] p-3"
+                              >
+                                <div className="flex items-center justify-between gap-3">
+                                  <p className="text-xs font-black">
+                                    {operation.name}
+                                  </p>
+                                  <span className="text-[9px] font-black text-[var(--brand)]">
+                                    {faNumber(
+                                      approvedPercent,
+                                    )}
+                                    ٪
+                                  </span>
+                                </div>
+
+                                <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-slate-100">
+                                  <div
+                                    className="h-full rounded-full bg-[var(--brand)]"
+                                    style={{
+                                      width: `${approvedPercent}%`,
+                                    }}
+                                  />
+                                </div>
+
+                                <div className="mt-3 grid grid-cols-3 gap-1 text-center">
+                                  <MiniInfo
+                                    label="هدف"
+                                    value={operation.targetQuantity}
+                                  />
+                                  <MiniInfo
+                                    label="ثبت"
+                                    value={operation.claimedQuantity}
+                                  />
+                                  <MiniInfo
+                                    label="تأیید"
+                                    value={operation.approvedQuantity}
+                                  />
+                                </div>
+
+                                <p className="mt-2 text-[9px] text-[var(--muted)]">
+                                  ظرفیت باقی‌مانده:{" "}
+                                  <b className="text-[var(--text)]">
+                                    {faNumber(
+                                      operation.remainingQuantity,
+                                    )}
+                                  </b>
+                                </p>
+                              </div>
+                            );
+                          })}
+                      </div>
+                    </div>
                   </div>
                 )}
-
-                <div className="mt-4">
-                  <p className="mb-2 text-[10px] font-black text-[var(--muted)]">
-                    وضعیت عملیات
-                  </p>
-
-                  <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
-                    {batch.operations
-                      .filter((operation) => operation.isBatchOperationActive)
-                      .map(
-                      (
-                        operation,
-                      ) => {
-                        const approvedPercent =
-                          operation.targetQuantity >
-                          0
-                            ? Math.min(
-                                100,
-                                Math.round(
-                                  (
-                                    operation.approvedQuantity /
-                                    operation.targetQuantity
-                                  ) *
-                                    100,
-                                ),
-                              )
-                            : 0;
-
-                        return (
-                          <div
-                            key={
-                              operation.batchOperationId
-                            }
-                            className="rounded-2xl border border-[var(--line)] p-3"
-                          >
-                            <div className="flex items-center justify-between gap-3">
-                              <p className="text-xs font-black">
-                                {operation.name}
-                              </p>
-
-                              <span className="text-[9px] font-black text-[var(--brand)]">
-                                {faNumber(
-                                  approvedPercent,
-                                )}
-                                ٪
-                              </span>
-                            </div>
-
-                            <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-slate-100">
-                              <div
-                                className="h-full rounded-full bg-[var(--brand)]"
-                                style={{
-                                  width:
-                                    `${approvedPercent}%`,
-                                }}
-                              />
-                            </div>
-
-                            <div className="mt-3 grid grid-cols-3 gap-1 text-center">
-                              <MiniInfo
-                                label="هدف"
-                                value={
-                                  operation.targetQuantity
-                                }
-                              />
-
-                              <MiniInfo
-                                label="ثبت"
-                                value={
-                                  operation.claimedQuantity
-                                }
-                              />
-
-                              <MiniInfo
-                                label="تأیید"
-                                value={
-                                  operation.approvedQuantity
-                                }
-                              />
-                            </div>
-
-                            <p className="mt-2 text-[9px] text-[var(--muted)]">
-                              ظرفیت باقی‌مانده:{" "}
-                              <b className="text-[var(--text)]">
-                                {faNumber(
-                                  operation.remainingQuantity,
-                                )}
-                              </b>
-                            </p>
-                          </div>
-                        );
-                      },
-                    )}
-                  </div>
-                </div>
               </article>
-            ),
-          )}
+            );
+          })}
         </div>
       )}
 

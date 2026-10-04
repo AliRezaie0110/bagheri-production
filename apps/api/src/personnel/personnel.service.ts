@@ -268,31 +268,6 @@ export class PersonnelService {
               FOR UPDATE
             `;
 
-            if (
-              dto.role ===
-              UserRole.SUPERVISOR
-            ) {
-              const activeSupervisor =
-                await tx.user.count({
-                  where: {
-                    role:
-                      UserRole.SUPERVISOR,
-                    isActive: true,
-                  },
-                });
-
-              if (
-                activeSupervisor > 0
-              ) {
-                throw new ConflictException({
-                  code:
-                    'ACTIVE_SUPERVISOR_EXISTS',
-                  message:
-                    'Ã˜Â¯Ã˜Â± Ã˜Â­Ã˜Â§Ã™â€ž Ã˜Â­Ã˜Â§Ã˜Â¶Ã˜Â± Ã›Å’ÃšÂ© Ã˜Â³Ã˜Â±Ã™Â¾Ã˜Â±Ã˜Â³Ã˜Âª Ã™ÂÃ˜Â¹Ã˜Â§Ã™â€ž Ã™Ë†Ã˜Â¬Ã™Ë†Ã˜Â¯ Ã˜Â¯Ã˜Â§Ã˜Â±Ã˜Â¯.',
-                });
-              }
-            }
-
             const user =
               await tx.user.create({
                 data: {
@@ -418,36 +393,6 @@ export class PersonnelService {
                     'MONTHLY_SALARY_REQUIRED',
                   message:
                     'Ã˜Â¨Ã˜Â±Ã˜Â§Ã›Å’ Ã˜Â³Ã˜Â±Ã™Â¾Ã˜Â±Ã˜Â³Ã˜Âª Ã™Ë† Ã™Ë†Ã˜Â±Ã˜Â¯Ã˜Â³Ã˜Âª Ã˜Â­Ã™â€šÃ™Ë†Ã™â€š Ã™â€¦Ã˜Â§Ã™â€¡Ã˜Â§Ã™â€ Ã™â€¡ Ã˜Â§Ã™â€žÃ˜Â²Ã˜Â§Ã™â€¦Ã›Å’ Ã˜Â§Ã˜Â³Ã˜Âª.',
-                });
-              }
-            }
-
-            if (
-              nextRole ===
-                UserRole.SUPERVISOR &&
-              existing.isActive
-            ) {
-              const otherSupervisor =
-                await tx.user.count({
-                  where: {
-                    role:
-                      UserRole.SUPERVISOR,
-                    isActive: true,
-                    id: {
-                      not:
-                        existing.id,
-                    },
-                  },
-                });
-
-              if (
-                otherSupervisor > 0
-              ) {
-                throw new ConflictException({
-                  code:
-                    'ACTIVE_SUPERVISOR_EXISTS',
-                  message:
-                    'Ã˜Â¯Ã˜Â± Ã˜Â­Ã˜Â§Ã™â€ž Ã˜Â­Ã˜Â§Ã˜Â¶Ã˜Â± Ã›Å’ÃšÂ© Ã˜Â³Ã˜Â±Ã™Â¾Ã˜Â±Ã˜Â³Ã˜Âª Ã™ÂÃ˜Â¹Ã˜Â§Ã™â€ž Ã™Ë†Ã˜Â¬Ã™Ë†Ã˜Â¯ Ã˜Â¯Ã˜Â§Ã˜Â±Ã˜Â¯.',
                 });
               }
             }
@@ -660,31 +605,6 @@ export class PersonnelService {
 
           if (existing.isActive) {
             return existing;
-          }
-
-          if (
-            existing.role ===
-            UserRole.SUPERVISOR
-          ) {
-            const supervisorCount =
-              await tx.user.count({
-                where: {
-                  role:
-                    UserRole.SUPERVISOR,
-                  isActive: true,
-                },
-              });
-
-            if (
-              supervisorCount > 0
-            ) {
-              throw new ConflictException({
-                code:
-                  'ACTIVE_SUPERVISOR_EXISTS',
-                message:
-                  'Ã˜Â¯Ã˜Â± Ã˜Â­Ã˜Â§Ã™â€ž Ã˜Â­Ã˜Â§Ã˜Â¶Ã˜Â± Ã›Å’ÃšÂ© Ã˜Â³Ã˜Â±Ã™Â¾Ã˜Â±Ã˜Â³Ã˜Âª Ã™ÂÃ˜Â¹Ã˜Â§Ã™â€ž Ã™Ë†Ã˜Â¬Ã™Ë†Ã˜Â¯ Ã˜Â¯Ã˜Â§Ã˜Â±Ã˜Â¯.',
-              });
-            }
           }
 
           const user =

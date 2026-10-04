@@ -1023,7 +1023,9 @@ export class WorkEntriesService {
 
     if (
       reviewerRole ===
-      UserRole.SUPERVISOR
+        UserRole.SUPERVISOR ||
+      reviewerRole ===
+        UserRole.MANAGER
     ) {
       try {
         await this.sms.sendWorkApproval(
