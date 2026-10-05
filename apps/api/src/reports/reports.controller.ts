@@ -21,6 +21,9 @@ import {
   OwnerReportQueryDto,
 } from './dto/owner-report-query.dto';
 import {
+  WorkHistoryQueryDto,
+} from './dto/work-history-query.dto';
+import {
   ReportsService,
 } from './reports.service';
 
@@ -62,6 +65,48 @@ export class ReportsController {
     response.setHeader(
       'Content-Disposition',
       'attachment; filename="bagheri-employees-report.xlsx"',
+    );
+
+    response.setHeader(
+      'Content-Length',
+      buffer.length,
+    );
+
+    response.end(
+      buffer,
+    );
+  }
+
+  @Get('work-history')
+  workHistory(
+    @Query()
+    query: WorkHistoryQueryDto,
+  ) {
+    return this.reports.workHistory(
+      query,
+    );
+  }
+
+  @Get('work-history.xlsx')
+  async workHistoryExcel(
+    @Query()
+    query: WorkHistoryQueryDto,
+    @Res()
+    response: Response,
+  ): Promise<void> {
+    const buffer =
+      await this.reports.workHistoryExcel(
+        query,
+      );
+
+    response.setHeader(
+      'Content-Type',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    );
+
+    response.setHeader(
+      'Content-Disposition',
+      'attachment; filename="bagheri-work-history.xlsx"',
     );
 
     response.setHeader(

@@ -8,7 +8,6 @@ import {
   RefreshCw,
   Search,
   UserCheck,
-  UserRound,
   UserX,
   UsersRound,
   X,
@@ -24,6 +23,10 @@ import {
 import type {
   UserRole,
 } from "@/lib/auth";
+
+import {
+  ProfileAvatar,
+} from "@/components/profile/profile-avatar";
 
 import {
   createPersonnel,
@@ -747,15 +750,12 @@ export function PersonnelSection() {
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex min-w-0 items-center gap-3">
-                    <div
-                      className={`flex size-11 shrink-0 items-center justify-center rounded-2xl ${
-                        item.isActive
-                          ? "bg-[var(--brand-soft)] text-[var(--brand)]"
-                          : "bg-slate-100 text-slate-400"
-                      }`}
-                    >
-                      <UserRound className="size-5" />
-                    </div>
+                    <ProfileAvatar
+                      userId={item.id}
+                      hasPhoto={item.hasProfilePhoto}
+                      version={item.profilePhotoVersion}
+                      className="size-11"
+                    />
 
                     <div className="min-w-0">
                       <p className="truncate text-sm font-black">
@@ -768,6 +768,12 @@ export function PersonnelSection() {
                       >
                         {item.phone}
                       </p>
+
+                      {item.profileTitle && (
+                        <p className="mt-1 truncate text-[10px] font-bold text-[var(--brand)]">
+                          {item.profileTitle}
+                        </p>
+                      )}
                     </div>
                   </div>
 
@@ -827,6 +833,12 @@ export function PersonnelSection() {
                     </div>
                   )}
                 </div>
+
+                {item.profileBio && (
+                  <p className="mt-3 line-clamp-2 rounded-2xl border border-[var(--line)] px-3 py-2 text-[10px] leading-5 text-[var(--muted)]">
+                    {item.profileBio}
+                  </p>
+                )}
 
                 <div className="mt-4 flex flex-wrap items-center gap-2">
                   {item.role !==

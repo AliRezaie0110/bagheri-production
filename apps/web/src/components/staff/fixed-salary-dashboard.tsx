@@ -23,6 +23,7 @@ import {
   LoaderCircle,
   RefreshCw,
   ShieldCheck,
+  UserRound,
   UserRoundCheck,
   WalletCards,
   XCircle,
@@ -35,6 +36,9 @@ import {
 import {
   AppShell,
 } from "@/components/layout/app-shell";
+import {
+  ProfileSection,
+} from "@/components/profile/profile-section";
 
 import {
   ApiError,
@@ -67,11 +71,13 @@ type SupervisorTab =
   | "work-review"
   | "time-review"
   | "my-time"
-  | "account";
+  | "account"
+  | "profile";
 
 type AssistantTab =
   | "my-time"
-  | "account";
+  | "account"
+  | "profile";
 
 type Tab =
   | SupervisorTab
@@ -1018,6 +1024,14 @@ export function FixedSalaryDashboard({
             icon:
               WalletCards,
           },
+          {
+            id:
+              "profile" as const,
+            label:
+              "پروفایل",
+            icon:
+              UserRound,
+          },
         ]
       : [
           {
@@ -1037,6 +1051,14 @@ export function FixedSalaryDashboard({
               "حساب من",
             icon:
               WalletCards,
+          },
+          {
+            id:
+              "profile" as const,
+            label:
+              "پروفایل",
+            icon:
+              UserRound,
           },
         ];
 
@@ -2160,6 +2182,11 @@ export function FixedSalaryDashboard({
                 )}
               </div>
             </section>
+          )}
+
+          {tab ===
+            "profile" && (
+            <ProfileSection user={user} />
           )}
 
           {tab ===

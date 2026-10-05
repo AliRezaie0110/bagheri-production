@@ -21,6 +21,7 @@ import {
   RefreshCw,
   Search,
   Send,
+  UserRound,
   WalletCards,
   XCircle,
 } from "lucide-react";
@@ -31,6 +32,12 @@ import {
 import {
   AppShell,
 } from "@/components/layout/app-shell";
+import {
+  ProfileSection,
+} from "@/components/profile/profile-section";
+import {
+  JalaliDateInput,
+} from "@/components/ui/jalali-date-input";
 import {
   ApiError,
 } from "@/lib/api";
@@ -52,7 +59,8 @@ import {
 type Tab =
   | "register"
   | "history"
-  | "account";
+  | "account"
+  | "profile";
 
 type HistoryFilter =
   | "ALL"
@@ -326,6 +334,18 @@ export function WorkerDashboard({
     useState<HistoryFilter>(
       "ALL",
     );
+
+  const [historyBatchId, setHistoryBatchId] =
+    useState("");
+
+  const [historyOperationId, setHistoryOperationId] =
+    useState("");
+
+  const [historyFrom, setHistoryFrom] =
+    useState("");
+
+  const [historyTo, setHistoryTo] =
+    useState("");
 
   const load =
     useCallback(
@@ -675,26 +695,146 @@ export function WorkerDashboard({
         !submitting,
     );
 
-  const filteredHistory =
+  const historyBatchOptions =
     useMemo(
       () => {
-        if (
-          historyFilter ===
-          "ALL"
-        ) {
-          return history;
+        const map =
+          new Map<
+            string,
+            {
+              id: string;
+              code: string;
+              modelName: string | null;
+            }
+          >();
+
+        for (const entry of history) {
+          if (!map.has(entry.batchId)) {
+            map.set(
+              entry.batchId,
+              {
+                id: entry.batchId,
+                code: entry.batchCode,
+                modelName: entry.modelName,
+              },
+            );
+          }
         }
 
-        return history.filter(
-          (entry) =>
-            entry.status ===
-            historyFilter,
-        );
+        return Array.from(map.values());
       },
+      [history],
+    );
+
+  const historyOperationOptions =
+    useMemo(
+      () => {
+        const map =
+          new Map<string, string>();
+
+        for (const entry of history) {
+          if (
+            historyBatchId &&
+            entry.batchId !== historyBatchId
+          ) {
+            continue;
+          }
+
+          map.set(
+            entry.operationId,
+            entry.operationName,
+          );
+        }
+
+        return Array.from(
+          map.entries(),
+        ).map(([id, name]) => ({
+          id,
+          name,
+        }));
+      },
+      [history, historyBatchId],
+    );
+
+  const filteredHistory =
+    useMemo(
+      () =>
+        history.filter(
+          (entry) => {
+            if (
+              historyFilter !== "ALL" &&
+              entry.status !== historyFilter
+            ) {
+              return false;
+            }
+
+            if (
+              historyBatchId &&
+              entry.batchId !== historyBatchId
+            ) {
+              return false;
+            }
+
+            if (
+              historyOperationId &&
+              entry.operationId !== historyOperationId
+            ) {
+              return false;
+            }
+
+            const day =
+              entry.createdAt.slice(0, 10);
+
+            if (
+              historyFrom &&
+              day < historyFrom
+            ) {
+              return false;
+            }
+
+            if (
+              historyTo &&
+              day > historyTo
+            ) {
+              return false;
+            }
+
+            return true;
+          },
+        ),
       [
         history,
+        historyBatchId,
         historyFilter,
+        historyFrom,
+        historyOperationId,
+        historyTo,
       ],
+    );
+
+  const filteredHistoryTotals =
+    useMemo(
+      () => {
+        let quantity = 0;
+        let amount = BigInt(0);
+
+        for (const entry of filteredHistory) {
+          quantity += entry.quantity;
+
+          try {
+            amount += BigInt(entry.totalAmount);
+          } catch {
+            // Invalid legacy monetary value is ignored in the aggregate only.
+          }
+        }
+
+        return {
+          entries: filteredHistory.length,
+          quantity,
+          amount: amount.toString(),
+        };
+      },
+      [filteredHistory],
     );
 
   const historyCounts =
@@ -861,6 +1001,14 @@ export function WorkerDashboard({
         "حساب من",
       icon:
         WalletCards,
+    },
+    {
+      id:
+        "profile",
+      label:
+        "پروفایل",
+      icon:
+        UserRound,
     },
   ];
 
@@ -1596,6 +1744,76 @@ export function WorkerDashboard({
           {tab ===
             "history" && (
             <section>
+              <div className="mb-4 rounded-[24px] border border-[var(--line)] bg-white p-4">
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-black">فیلتر سوابق من</p>
+                    <p className="mt-1 text-[10px] leading-5 text-[var(--muted)]">
+                      سری‌کار، عملیات و بازه زمانی دلخواه را انتخاب کنید.
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setHistoryBatchId("");
+                      setHistoryOperationId("");
+                      setHistoryFrom("");
+                      setHistoryTo("");
+                      setHistoryFilter("ALL");
+                    }}
+                    className="h-9 shrink-0 rounded-xl border border-[var(--line)] px-3 text-[10px] font-black text-[var(--muted)]"
+                  >
+                    پاک کردن
+                  </button>
+                </div>
+
+                <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+                  <select
+                    value={historyBatchId}
+                    onChange={(event) => {
+                      setHistoryBatchId(event.target.value);
+                      setHistoryOperationId("");
+                    }}
+                    className="h-11 w-full rounded-xl border border-[var(--line)] bg-white px-3 text-xs font-bold outline-none focus:border-[var(--brand)] focus:ring-4 focus:ring-[var(--brand-soft)]"
+                  >
+                    <option value="">همه سری‌کارها</option>
+                    {historyBatchOptions.map((batch) => (
+                      <option key={batch.id} value={batch.id}>
+                        {batch.code}{batch.modelName ? ` — ${batch.modelName}` : ""}
+                      </option>
+                    ))}
+                  </select>
+
+                  <select
+                    value={historyOperationId}
+                    onChange={(event) => setHistoryOperationId(event.target.value)}
+                    className="h-11 w-full rounded-xl border border-[var(--line)] bg-white px-3 text-xs font-bold outline-none focus:border-[var(--brand)] focus:ring-4 focus:ring-[var(--brand-soft)]"
+                  >
+                    <option value="">همه عملیات‌ها</option>
+                    {historyOperationOptions.map((operation) => (
+                      <option key={operation.id} value={operation.id}>
+                        {operation.name}
+                      </option>
+                    ))}
+                  </select>
+
+                  <JalaliDateInput
+                    dir="ltr"
+                    value={historyFrom}
+                    onChange={(event) => setHistoryFrom(event.target.value)}
+                    className="h-11 w-full rounded-xl border border-[var(--line)] bg-white px-3 text-xs font-bold outline-none focus:border-[var(--brand)] focus:ring-4 focus:ring-[var(--brand-soft)]"
+                  />
+
+                  <JalaliDateInput
+                    dir="ltr"
+                    value={historyTo}
+                    onChange={(event) => setHistoryTo(event.target.value)}
+                    className="h-11 w-full rounded-xl border border-[var(--line)] bg-white px-3 text-xs font-bold outline-none focus:border-[var(--brand)] focus:ring-4 focus:ring-[var(--brand-soft)]"
+                  />
+                </div>
+              </div>
+
               <div className="mb-4 overflow-x-auto pb-1">
                 <div className="flex min-w-max gap-2">
                   {(
@@ -1662,6 +1880,29 @@ export function WorkerDashboard({
                       </button>
                     ),
                   )}
+                </div>
+              </div>
+
+              <div className="mb-4 grid grid-cols-3 gap-2">
+                <div className="rounded-2xl bg-white p-3 text-center ring-1 ring-[var(--line)]">
+                  <p className="text-[9px] text-[var(--muted)]">ثبت‌ها</p>
+                  <p className="mt-1 text-sm font-black">
+                    {formatNumber(filteredHistoryTotals.entries)}
+                  </p>
+                </div>
+
+                <div className="rounded-2xl bg-white p-3 text-center ring-1 ring-[var(--line)]">
+                  <p className="text-[9px] text-[var(--muted)]">تعداد قطعه</p>
+                  <p className="mt-1 text-sm font-black">
+                    {formatNumber(filteredHistoryTotals.quantity)}
+                  </p>
+                </div>
+
+                <div className="rounded-2xl bg-[var(--brand-soft)] p-3 text-center">
+                  <p className="text-[9px] text-[var(--brand)]/70">مبلغ این فیلتر</p>
+                  <p className="mt-1 text-xs font-black text-[var(--brand)]">
+                    {money(filteredHistoryTotals.amount)}
+                  </p>
                 </div>
               </div>
 
@@ -1826,6 +2067,11 @@ export function WorkerDashboard({
                 </div>
               )}
             </section>
+          )}
+
+          {tab ===
+            "profile" && (
+            <ProfileSection user={user} />
           )}
 
           {tab ===

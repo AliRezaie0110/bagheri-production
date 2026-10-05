@@ -92,8 +92,11 @@ export class PersonnelService {
       | { toString(): string }
       | null;
     phoneVerifiedAt: Date | null;
-    createdAt: Date;
+    profileTitle: string | null;
+    profileBio: string | null;
+    profilePhotoFileName: string | null;
     updatedAt: Date;
+    createdAt: Date;
   }) {
     return {
       id: user.id,
@@ -109,6 +112,16 @@ export class PersonnelService {
       phoneVerifiedAt:
         user.phoneVerifiedAt
           ?.toISOString() ?? null,
+      profileTitle:
+        user.profileTitle,
+      profileBio:
+        user.profileBio,
+      hasProfilePhoto:
+        Boolean(
+          user.profilePhotoFileName,
+        ),
+      profilePhotoVersion:
+        user.updatedAt.toISOString(),
       createdAt:
         user.createdAt.toISOString(),
       updatedAt:

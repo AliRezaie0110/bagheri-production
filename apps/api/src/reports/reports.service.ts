@@ -19,6 +19,9 @@ import {
 import {
   OwnerReportQueryDto,
 } from './dto/owner-report-query.dto';
+import {
+  WorkHistoryQueryDto,
+} from './dto/work-history-query.dto';
 
 type DateRange = {
   start: Date | null;
@@ -298,7 +301,7 @@ export class ReportsService {
   ): string {
     switch (role) {
       case UserRole.WORKER:
-        return 'چرخکار';
+        return 'همکار';
 
       case UserRole.SUPERVISOR:
         return 'سرپرست';
@@ -1063,6 +1066,700 @@ export class ReportsService {
       monthlySalaries:
         salaryItems,
     };
+  }
+
+  async workHistory(
+    query: WorkHistoryQueryDto,
+  ) {
+    const range =
+      this.range(
+        query.from,
+        query.to,
+      );
+
+    const where: any = {};
+
+    if (
+      query.employeeId
+    ) {
+      where.workerId =
+        query.employeeId;
+    }
+
+    if (
+      query.workBatchSizeId
+    ) {
+      where.workBatchSizeId =
+        query.workBatchSizeId;
+    }
+
+    if (
+      query.status
+    ) {
+      where.status =
+        query.status;
+    }
+
+    if (
+      query.reviewerId
+    ) {
+      where.reviewedById =
+        query.reviewerId;
+    }
+
+    if (
+      query.workBatchId ||
+      query.operationId
+    ) {
+      where.batchOperation = {
+        ...(query.workBatchId
+          ? {
+              workBatchId:
+                query.workBatchId,
+            }
+          : {}),
+        ...(query.operationId
+          ? {
+              operationId:
+                query.operationId,
+            }
+          : {}),
+      };
+    }
+
+    if (
+      range.start ||
+      range.endExclusive
+    ) {
+      where.createdAt = {
+        ...(range.start
+          ? {
+              gte:
+                range.start,
+            }
+          : {}),
+        ...(range.endExclusive
+          ? {
+              lt:
+                range.endExclusive,
+            }
+          : {}),
+      };
+    }
+
+    const entries =
+      await this.prisma.workEntry.findMany({
+        where,
+        include: {
+          worker: {
+            select: {
+              id:
+                true,
+              fullName:
+                true,
+              phone:
+                true,
+            },
+          },
+          reviewedBy: {
+            select: {
+              id:
+                true,
+              fullName:
+                true,
+            },
+          },
+          workBatchSize:
+            true,
+          batchOperation: {
+            include: {
+              operation:
+                true,
+              workBatch: {
+                include: {
+                  owner:
+                    true,
+                },
+              },
+            },
+          },
+        },
+        orderBy: [
+          {
+            createdAt:
+              'desc',
+          },
+          {
+            id:
+              'desc',
+          },
+        ],
+      });
+
+    let totalQuantity =
+      0;
+
+    let totalAmount =
+      0n;
+
+    const employees =
+      new Set<string>();
+
+    const operations =
+      new Set<string>();
+
+    const batches =
+      new Set<string>();
+
+    const items =
+      entries.map(
+        (entry) => {
+          totalQuantity +=
+            entry.quantity;
+
+          totalAmount +=
+            this.money(
+              entry.totalAmount,
+            );
+
+          employees.add(
+            entry.workerId,
+          );
+
+          operations.add(
+            entry.batchOperation
+              .operationId,
+          );
+
+          batches.add(
+            entry.batchOperation
+              .workBatchId,
+          );
+
+          return {
+            id:
+              entry.id,
+            employeeId:
+              entry.workerId,
+            employeeName:
+              entry.worker.fullName,
+            employeePhone:
+              entry.worker.phone,
+            batchId:
+              entry.batchOperation
+                .workBatchId,
+            batchCode:
+              entry.batchOperation
+                .workBatch.code,
+            modelName:
+              entry.batchOperation
+                .workBatch.modelName,
+            ownerId:
+              entry.batchOperation
+                .workBatch.ownerId,
+            ownerName:
+              entry.batchOperation
+                .workBatch.owner.name,
+            operationId:
+              entry.batchOperation
+                .operationId,
+            operationName:
+              entry.batchOperation
+                .operation.name,
+            workBatchSizeId:
+              entry.workBatchSizeId,
+            sizeLabel:
+              entry.workBatchSize.label,
+            quantity:
+              entry.quantity,
+            unitRate:
+              entry.unitRate.toString(),
+            totalAmount:
+              entry.totalAmount.toString(),
+            status:
+              entry.status,
+            workerNote:
+              entry.workerNote,
+            reviewerNote:
+              entry.reviewerNote,
+            reviewer:
+              entry.reviewedBy
+                ? {
+                    id:
+                      entry.reviewedBy.id,
+                    fullName:
+                      entry.reviewedBy.fullName,
+                  }
+                : null,
+            reviewedAt:
+              entry.reviewedAt
+                ?.toISOString() ??
+              null,
+            createdAt:
+              entry.createdAt.toISOString(),
+          };
+        },
+      );
+
+    const employeeSummaryMap =
+      new Map<
+        string,
+        {
+          employeeId: string;
+          employeeName: string;
+          employeePhone: string;
+          entries: number;
+          quantity: number;
+          amount: bigint;
+        }
+      >();
+
+    for (
+      const item of items
+    ) {
+      const current =
+        employeeSummaryMap.get(
+          item.employeeId,
+        ) ?? {
+          employeeId:
+            item.employeeId,
+          employeeName:
+            item.employeeName,
+          employeePhone:
+            item.employeePhone,
+          entries:
+            0,
+          quantity:
+            0,
+          amount:
+            0n,
+        };
+
+      current.entries +=
+        1;
+
+      current.quantity +=
+        item.quantity;
+
+      current.amount +=
+        this.money(
+          item.totalAmount,
+        );
+
+      employeeSummaryMap.set(
+        item.employeeId,
+        current,
+      );
+    }
+
+    const employeeSummary =
+      Array.from(
+        employeeSummaryMap.values(),
+      )
+        .sort(
+          (a, b) =>
+            b.quantity -
+            a.quantity,
+        )
+        .map(
+          (item) => ({
+            employeeId:
+              item.employeeId,
+            employeeName:
+              item.employeeName,
+            employeePhone:
+              item.employeePhone,
+            entries:
+              item.entries,
+            quantity:
+              item.quantity,
+            amount:
+              item.amount.toString(),
+          }),
+        );
+
+    return {
+      filters: {
+        employeeId:
+          query.employeeId ??
+          null,
+        workBatchId:
+          query.workBatchId ??
+          null,
+        operationId:
+          query.operationId ??
+          null,
+        workBatchSizeId:
+          query.workBatchSizeId ??
+          null,
+        status:
+          query.status ??
+          null,
+        reviewerId:
+          query.reviewerId ??
+          null,
+        from:
+          query.from ??
+          null,
+        to:
+          query.to ??
+          null,
+      },
+      totals: {
+        entries:
+          items.length,
+        employees:
+          employees.size,
+        operations:
+          operations.size,
+        batches:
+          batches.size,
+        quantity:
+          totalQuantity,
+        amount:
+          totalAmount.toString(),
+      },
+      employeeSummary,
+      items,
+    };
+  }
+
+  async workHistoryExcel(
+    query: WorkHistoryQueryDto,
+  ): Promise<Buffer> {
+    const report =
+      await this.workHistory(
+        query,
+      );
+
+    const workbook =
+      new ExcelJS.Workbook();
+
+    workbook.creator =
+      'Bagheri Production';
+
+    workbook.created =
+      new Date();
+
+    const employeeSummarySheet =
+      workbook.addWorksheet(
+        'خلاصه افراد',
+      );
+
+    employeeSummarySheet.columns = [
+      {
+        header:
+          'پرسنل',
+        key:
+          'employee',
+        width:
+          24,
+      },
+      {
+        header:
+          'موبایل',
+        key:
+          'phone',
+        width:
+          16,
+      },
+      {
+        header:
+          'تعداد ثبت',
+        key:
+          'entries',
+        width:
+          14,
+      },
+      {
+        header:
+          'تعداد قطعه',
+        key:
+          'quantity',
+        width:
+          14,
+      },
+      {
+        header:
+          'مبلغ',
+        key:
+          'amount',
+        width:
+          18,
+      },
+    ];
+
+    for (
+      const item of
+      report.employeeSummary
+    ) {
+      employeeSummarySheet.addRow({
+        employee:
+          item.employeeName,
+        phone:
+          item.employeePhone,
+        entries:
+          item.entries,
+        quantity:
+          item.quantity,
+        amount:
+          this.excelValue(
+            item.amount,
+          ),
+      });
+    }
+
+    employeeSummarySheet.getColumn(
+      'E',
+    ).numFmt =
+      '#,##0';
+
+    this.styleWorksheet(
+      employeeSummarySheet,
+    );
+
+    const sheet =
+      workbook.addWorksheet(
+        'سوابق عملیات',
+      );
+
+    sheet.columns = [
+      {
+        header:
+          'تاریخ ثبت',
+        key:
+          'createdAt',
+        width:
+          22,
+      },
+      {
+        header:
+          'پرسنل',
+        key:
+          'employee',
+        width:
+          24,
+      },
+      {
+        header:
+          'موبایل',
+        key:
+          'phone',
+        width:
+          16,
+      },
+      {
+        header:
+          'صاحبکار',
+        key:
+          'owner',
+        width:
+          20,
+      },
+      {
+        header:
+          'سری‌کار',
+        key:
+          'batch',
+        width:
+          16,
+      },
+      {
+        header:
+          'مدل',
+        key:
+          'model',
+        width:
+          18,
+      },
+      {
+        header:
+          'عملیات',
+        key:
+          'operation',
+        width:
+          24,
+      },
+      {
+        header:
+          'سایز',
+        key:
+          'size',
+        width:
+          12,
+      },
+      {
+        header:
+          'تعداد',
+        key:
+          'quantity',
+        width:
+          12,
+      },
+      {
+        header:
+          'نرخ واحد',
+        key:
+          'unitRate',
+        width:
+          16,
+      },
+      {
+        header:
+          'مبلغ',
+        key:
+          'amount',
+        width:
+          18,
+      },
+      {
+        header:
+          'وضعیت',
+        key:
+          'status',
+        width:
+          14,
+      },
+      {
+        header:
+          'تأییدکننده',
+        key:
+          'reviewer',
+        width:
+          22,
+      },
+      {
+        header:
+          'زمان تأیید',
+        key:
+          'reviewedAt',
+        width:
+          22,
+      },
+      {
+        header:
+          'توضیح همکار',
+        key:
+          'workerNote',
+        width:
+          28,
+      },
+      {
+        header:
+          'توضیح بررسی',
+        key:
+          'reviewerNote',
+        width:
+          28,
+      },
+    ];
+
+    const statusLabel =
+      (status: ApprovalStatus) => {
+        switch (status) {
+          case ApprovalStatus.APPROVED:
+            return 'تأییدشده';
+          case ApprovalStatus.PENDING:
+            return 'در انتظار';
+          case ApprovalStatus.REJECTED:
+            return 'ردشده';
+        }
+      };
+
+    for (
+      const item of report.items
+    ) {
+      sheet.addRow({
+        createdAt:
+          item.createdAt,
+        employee:
+          item.employeeName,
+        phone:
+          item.employeePhone,
+        owner:
+          item.ownerName,
+        batch:
+          item.batchCode,
+        model:
+          item.modelName,
+        operation:
+          item.operationName,
+        size:
+          item.sizeLabel,
+        quantity:
+          item.quantity,
+        unitRate:
+          this.excelValue(
+            item.unitRate,
+          ),
+        amount:
+          this.excelValue(
+            item.totalAmount,
+          ),
+        status:
+          statusLabel(
+            item.status,
+          ),
+        reviewer:
+          item.reviewer
+            ?.fullName ??
+          null,
+        reviewedAt:
+          item.reviewedAt,
+        workerNote:
+          item.workerNote,
+        reviewerNote:
+          item.reviewerNote,
+      });
+    }
+
+    const totalRow =
+      sheet.addRow({
+        employee:
+          'جمع فیلتر',
+        quantity:
+          report.totals
+            .quantity,
+        amount:
+          this.excelValue(
+            report.totals
+              .amount,
+          ),
+      });
+
+    this.styleTotalRow(
+      totalRow,
+    );
+
+    sheet.getColumn(
+      'I',
+    ).numFmt =
+      '#,##0';
+
+    sheet.getColumn(
+      'J',
+    ).numFmt =
+      '#,##0';
+
+    sheet.getColumn(
+      'K',
+    ).numFmt =
+      '#,##0';
+
+    this.styleWorksheet(
+      sheet,
+    );
+
+    this.localizeWorkbookDates(
+      workbook,
+    );
+
+    const buffer =
+      await workbook.xlsx.writeBuffer();
+
+    return Buffer.from(
+      buffer,
+    );
   }
 
   async owners(
@@ -1857,6 +2554,280 @@ export class ReportsService {
 
     this.styleWorksheet(
       summary,
+    );
+
+    const reportRange =
+      this.range(
+        query.from,
+        query.to,
+      );
+
+    const employeeIds =
+      report.items.map(
+        (item) =>
+          item.id,
+      );
+
+    const detailedWorkEntries =
+      employeeIds.length ===
+      0
+        ? []
+        : await this.prisma.workEntry.findMany({
+            where: {
+              workerId: {
+                in:
+                  employeeIds,
+              },
+              ...(reportRange.start ||
+              reportRange.endExclusive
+                ? {
+                    createdAt: {
+                      ...(reportRange.start
+                        ? {
+                            gte:
+                              reportRange.start,
+                          }
+                        : {}),
+                      ...(reportRange.endExclusive
+                        ? {
+                            lt:
+                              reportRange.endExclusive,
+                          }
+                        : {}),
+                    },
+                  }
+                : {}),
+            },
+            include: {
+              worker: {
+                select: {
+                  fullName:
+                    true,
+                  phone:
+                    true,
+                },
+              },
+              reviewedBy: {
+                select: {
+                  fullName:
+                    true,
+                },
+              },
+              workBatchSize:
+                true,
+              batchOperation: {
+                include: {
+                  operation:
+                    true,
+                  workBatch: {
+                    include: {
+                      owner:
+                        true,
+                    },
+                  },
+                },
+              },
+            },
+            orderBy: {
+              createdAt:
+                'desc',
+            },
+          });
+
+    const operationsSheet =
+      workbook.addWorksheet(
+        'ریز عملیات',
+      );
+
+    operationsSheet.columns = [
+      {
+        header:
+          'تاریخ ثبت',
+        key:
+          'createdAt',
+        width:
+          22,
+      },
+      {
+        header:
+          'پرسنل',
+        key:
+          'employee',
+        width:
+          24,
+      },
+      {
+        header:
+          'موبایل',
+        key:
+          'phone',
+        width:
+          16,
+      },
+      {
+        header:
+          'صاحبکار',
+        key:
+          'owner',
+        width:
+          20,
+      },
+      {
+        header:
+          'سری‌کار',
+        key:
+          'batch',
+        width:
+          16,
+      },
+      {
+        header:
+          'مدل',
+        key:
+          'model',
+        width:
+          18,
+      },
+      {
+        header:
+          'عملیات',
+        key:
+          'operation',
+        width:
+          24,
+      },
+      {
+        header:
+          'سایز',
+        key:
+          'size',
+        width:
+          12,
+      },
+      {
+        header:
+          'تعداد',
+        key:
+          'quantity',
+        width:
+          12,
+      },
+      {
+        header:
+          'نرخ واحد',
+        key:
+          'unitRate',
+        width:
+          16,
+      },
+      {
+        header:
+          'مبلغ',
+        key:
+          'amount',
+        width:
+          18,
+      },
+      {
+        header:
+          'وضعیت',
+        key:
+          'status',
+        width:
+          14,
+      },
+      {
+        header:
+          'تأییدکننده',
+        key:
+          'reviewer',
+        width:
+          22,
+      },
+      {
+        header:
+          'زمان تأیید',
+        key:
+          'reviewedAt',
+        width:
+          22,
+      },
+    ];
+
+    for (
+      const entry of
+      detailedWorkEntries
+    ) {
+      operationsSheet.addRow({
+        createdAt:
+          entry.createdAt
+            .toISOString(),
+        employee:
+          entry.worker.fullName,
+        phone:
+          entry.worker.phone,
+        owner:
+          entry.batchOperation
+            .workBatch.owner.name,
+        batch:
+          entry.batchOperation
+            .workBatch.code,
+        model:
+          entry.batchOperation
+            .workBatch.modelName,
+        operation:
+          entry.batchOperation
+            .operation.name,
+        size:
+          entry.workBatchSize.label,
+        quantity:
+          entry.quantity,
+        unitRate:
+          this.excelValue(
+            entry.unitRate
+              .toString(),
+          ),
+        amount:
+          this.excelValue(
+            entry.totalAmount
+              .toString(),
+          ),
+        status:
+          entry.status ===
+          ApprovalStatus.APPROVED
+            ? 'تأییدشده'
+            : entry.status ===
+                ApprovalStatus.PENDING
+              ? 'در انتظار'
+              : 'ردشده',
+        reviewer:
+          entry.reviewedBy
+            ?.fullName ??
+          null,
+        reviewedAt:
+          entry.reviewedAt
+            ?.toISOString() ??
+          null,
+      });
+    }
+
+    operationsSheet.getColumn(
+      'I',
+    ).numFmt =
+      '#,##0';
+
+    operationsSheet.getColumn(
+      'J',
+    ).numFmt =
+      '#,##0';
+
+    operationsSheet.getColumn(
+      'K',
+    ).numFmt =
+      '#,##0';
+
+    this.styleWorksheet(
+      operationsSheet,
     );
 
     const payments =

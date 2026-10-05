@@ -19,6 +19,7 @@ import { OperationsModule } from './operations/operations.module';
 import { OwnersModule } from './owners/owners.module';
 import { PersonnelModule } from './personnel/personnel.module';
 import { PrismaModule } from './prisma/prisma.module';
+import { ProfileModule } from './profile/profile.module';
 
 @Module({
   imports: [
@@ -47,6 +48,7 @@ import { PrismaModule } from './prisma/prisma.module';
     EmployeeAccountsModule,
     OwnerAccountsModule,
     ReportsModule,
+    ProfileModule,
   ],
   controllers: [
     AppController,

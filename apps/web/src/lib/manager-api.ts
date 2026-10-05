@@ -86,6 +86,17 @@ export type PersonnelItem = {
     | string
     | null;
 
+  profileTitle:
+    | string
+    | null;
+
+  profileBio:
+    | string
+    | null;
+
+  hasProfilePhoto: boolean;
+  profilePhotoVersion: string;
+
   createdAt: string;
   updatedAt: string;
 };
@@ -1629,6 +1640,113 @@ export type EmployeeReportResponse = {
     EmployeeReportSalary[];
 };
 
+export type WorkHistoryFilters = {
+  employeeId?: string;
+  workBatchId?: string;
+  operationId?: string;
+  workBatchSizeId?: string;
+
+  status?:
+    | "PENDING"
+    | "APPROVED"
+    | "REJECTED";
+
+  reviewerId?: string;
+  from?: string;
+  to?: string;
+};
+
+export type WorkHistoryItem = {
+  id: string;
+  employeeId: string;
+  employeeName: string;
+  employeePhone: string;
+  batchId: string;
+  batchCode: string;
+  modelName:
+    | string
+    | null;
+  ownerId: string;
+  ownerName: string;
+  operationId: string;
+  operationName: string;
+  workBatchSizeId: string;
+  sizeLabel: string;
+  quantity: number;
+  unitRate: string;
+  totalAmount: string;
+  status:
+    | "PENDING"
+    | "APPROVED"
+    | "REJECTED";
+  workerNote:
+    | string
+    | null;
+  reviewerNote:
+    | string
+    | null;
+  reviewer:
+    | {
+        id: string;
+        fullName: string;
+      }
+    | null;
+  reviewedAt:
+    | string
+    | null;
+  createdAt: string;
+};
+
+export type WorkHistoryResponse = {
+  filters: {
+    employeeId:
+      | string
+      | null;
+    workBatchId:
+      | string
+      | null;
+    operationId:
+      | string
+      | null;
+    workBatchSizeId:
+      | string
+      | null;
+    status:
+      | string
+      | null;
+    reviewerId:
+      | string
+      | null;
+    from:
+      | string
+      | null;
+    to:
+      | string
+      | null;
+  };
+
+  totals: {
+    entries: number;
+    employees: number;
+    operations: number;
+    batches: number;
+    quantity: number;
+    amount: string;
+  };
+
+  employeeSummary: Array<{
+    employeeId: string;
+    employeeName: string;
+    employeePhone: string;
+    entries: number;
+    quantity: number;
+    amount: string;
+  }>;
+
+  items:
+    WorkHistoryItem[];
+};
+
 export type OwnerReportFilters = {
   ownerId?: string;
   q?: string;
@@ -1808,6 +1926,24 @@ export function getEmployeeReport(
   );
 }
 
+export function getWorkHistoryReport(
+  filters:
+    WorkHistoryFilters,
+): Promise<WorkHistoryResponse> {
+  return apiFetch<WorkHistoryResponse>(
+    queryPath(
+      "/admin/reports/work-history",
+      filters,
+    ),
+    {
+      method:
+        "GET",
+      cache:
+        "no-store",
+    },
+  );
+}
+
 export function getOwnerReport(
   filters:
     OwnerReportFilters,
@@ -1887,6 +2023,17 @@ export function downloadEmployeeReportExcel(
     "/admin/reports/employees.xlsx",
     filters,
     "bagheri-employees-report.xlsx",
+  );
+}
+
+export function downloadWorkHistoryExcel(
+  filters:
+    WorkHistoryFilters,
+): Promise<void> {
+  return downloadManagerExcel(
+    "/admin/reports/work-history.xlsx",
+    filters,
+    "bagheri-work-history.xlsx",
   );
 }
 
