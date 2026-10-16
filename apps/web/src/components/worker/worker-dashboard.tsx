@@ -32,6 +32,7 @@ import {
 import {
   AppShell,
 } from "@/components/layout/app-shell";
+import { ProfileAvatar } from "@/components/profile/profile-avatar";
 import {
   ProfileSection,
 } from "@/components/profile/profile-section";
@@ -1021,8 +1022,10 @@ export function WorkerDashboard({
     >
       <section className="mb-4 overflow-hidden rounded-[26px] bg-[#102827] p-5 text-white shadow-[0_18px_45px_rgba(16,40,39,.14)] sm:p-6">
         <div className="flex items-start justify-between gap-4">
-          <div>
-            <p className="text-xs font-bold text-emerald-200/80">
+          <div className="flex min-w-0 items-start gap-3">
+            <ProfileAvatar userId={user.id} hasPhoto={true} className="!size-14 !rounded-full border-2 border-white/20" />
+            <div className="min-w-0">
+              <p className="text-xs font-bold text-emerald-200/80">
               سلام،
             </p>
 
@@ -1033,8 +1036,8 @@ export function WorkerDashboard({
             <p className="mt-2 text-xs leading-6 text-white/55">
               وضعیت حساب و کارهای ثبت‌شده شما به‌صورت لحظه‌ای
             </p>
+                      </div>
           </div>
-
           <button
             type="button"
             disabled={
