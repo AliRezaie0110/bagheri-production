@@ -10,6 +10,7 @@ import {
   History,
   LoaderCircle,
   RefreshCw,
+  Undo2,
   Search,
   UsersRound,
 } from "lucide-react";
@@ -33,6 +34,7 @@ import {
   getEmployeeReport,
   getOwnerReport,
   getWorkHistoryReport,
+  undoWorkEntryApproval,
   listBatches,
   listEmployeeAccounts,
   listOperations,
@@ -1348,6 +1350,7 @@ function WorkHistoryReports() {
 
   const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState(false);
+  const [undoingId, setUndoingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const selectedBatch =
@@ -1481,6 +1484,27 @@ function WorkHistoryReports() {
       setError(managerError(caught));
     } finally {
       setDownloading(false);
+    }
+  }
+  async function undoApproval(item: WorkHistoryResponse["items"][number]) {
+    if (item.status !== "APPROVED" || undoingId !== null) return;
+
+    const confirmed = window.confirm(
+      `تأیید عملیات ${item.operationName} برای ${item.employeeName} با تعداد ${item.quantity} برگشت داده شود؟ سابقه حذف نخواهد شد.`,
+    );
+
+    if (!confirmed) return;
+
+    setUndoingId(item.id);
+    setError(null);
+
+    try {
+      await undoWorkEntryApproval(item.id);
+      await load(filters);
+    } catch (caught) {
+      setError(managerError(caught));
+    } finally {
+      setUndoingId(null);
     }
   }
 
@@ -1738,6 +1762,8 @@ function WorkHistoryReports() {
                       <Th>وضعیت</Th>
                       <Th>تأییدکننده</Th>
                       <Th>زمان تأیید</Th>
+
+                      <Th>عملیات</Th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[var(--line)] text-xs">
@@ -1778,16 +1804,37 @@ function WorkHistoryReports() {
                                   ? "bg-amber-50 text-amber-700"
                                   : "bg-red-50 text-red-700"
                             }`}
-                          >
-                            {item.status === "APPROVED"
-                              ? "تأییدشده"
-                              : item.status === "PENDING"
-                                ? "در انتظار"
-                                : "ردشده"}
+                          >{item.status === "REJECTED" && item.reviewerNote === "\u062A\u0623\u06CC\u06CC\u062F \u0628\u0631\u06AF\u0634\u062A\u200C\u062E\u0648\u0631\u062F\u0647 \u062A\u0648\u0633\u0637 \u0645\u062F\u06CC\u0631"
+  ? "\u0628\u0631\u06AF\u0634\u062A \u062E\u0648\u0631\u062F\u0647"
+  : item.status === "APPROVED"
+    ? "\u062A\u0623\u06CC\u06CC\u062F\u0634\u062F\u0647"
+    : item.status === "PENDING"
+      ? "\u062F\u0631 \u0627\u0646\u062A\u0638\u0627\u0631"
+      : "\u0631\u062F\u0634\u062F\u0647"}
                           </span>
                         </Td>
                         <Td>{item.reviewer?.fullName ?? "—"}</Td>
                         <Td>{date(item.reviewedAt)}</Td>
+                        <Td>
+                          {item.status === "APPROVED" ? (
+                            <button
+                              type="button"
+                              disabled={undoingId !== null}
+                              onClick={() => void undoApproval(item)}
+                              title="Revert mistaken approval"
+                              className="inline-flex items-center gap-1 rounded-lg border border-amber-200 px-2 py-1.5 text-[10px] font-black text-amber-700 transition hover:bg-amber-50 disabled:opacity-50"
+                            >
+                              {undoingId === item.id ? (
+                                <LoaderCircle className="size-3 animate-spin" />
+                              ) : (
+                                <Undo2 className="size-3" />
+                              )}
+                              برگشت تأیید
+                            </button>
+                          ) : (
+                            <span className="text-[var(--muted)]">—</span>
+                          )}
+                        </Td>
                       </tr>
                     ))}
                   </tbody>

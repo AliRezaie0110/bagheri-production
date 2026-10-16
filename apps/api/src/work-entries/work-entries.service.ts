@@ -1119,6 +1119,137 @@ export class WorkEntriesService {
 
     return base;
   }
+  async undoApproval(
+    managerId: string,
+    id: string,
+  ) {
+    const result = await this.prisma.$transaction(
+      async (tx) => {
+        const lockedEntry = await tx.$queryRaw<
+          Array<{ id: string }>
+        >`
+          SELECT "id"
+          FROM "WorkEntry"
+          WHERE "id" = ${id}
+          FOR UPDATE
+        `;
+
+        if (lockedEntry.length !== 1) {
+          throw new NotFoundException({
+            code: 'WORK_ENTRY_NOT_FOUND',
+            message: 'Work entry not found.',
+          });
+        }
+
+        const entry = await tx.workEntry.findUnique({
+          where: { id },
+        });
+
+        if (!entry) {
+          throw new NotFoundException({
+            code: 'WORK_ENTRY_NOT_FOUND',
+            message: 'Work entry not found.',
+          });
+        }
+
+        if (entry.status !== ApprovalStatus.APPROVED) {
+          throw new ConflictException({
+            code: 'WORK_ENTRY_NOT_APPROVED',
+            message: 'Only an approved work entry can be reverted.',
+          });
+        }
+
+        await tx.$queryRaw<Array<{ id: string }>>`
+          SELECT "id"
+          FROM "BatchOperation"
+          WHERE "id" = ${entry.batchOperationId}
+          FOR UPDATE
+        `;
+
+        const batchOperation =
+          await tx.batchOperation.findUnique({
+            where: { id: entry.batchOperationId },
+          });
+
+        if (!batchOperation) {
+          throw new NotFoundException({
+            code: 'BATCH_OPERATION_NOT_FOUND',
+            message: 'Batch operation not found.',
+          });
+        }
+
+        if (
+          batchOperation.claimedQuantity < entry.quantity ||
+          batchOperation.approvedQuantity < entry.quantity
+        ) {
+          throw new ConflictException({
+            code: 'WORK_ENTRY_QUANTITY_INCONSISTENT',
+            message: 'Work entry quantities are inconsistent.',
+          });
+        }
+
+        const revokedNote =
+          '\u062A\u0623\u06CC\u06CC\u062F \u0628\u0631\u06AF\u0634\u062A\u200C\u062E\u0648\u0631\u062F\u0647 \u062A\u0648\u0633\u0637 \u0645\u062F\u06CC\u0631';
+
+        const now = new Date();
+
+        const updated = await tx.workEntry.update({
+          where: { id },
+          data: {
+            status: ApprovalStatus.REJECTED,
+            reviewerNote: revokedNote,
+            reviewedById: managerId,
+            reviewedAt: now,
+          },
+        });
+
+        await tx.batchOperation.update({
+          where: { id: entry.batchOperationId },
+          data: {
+            claimedQuantity: {
+              decrement: entry.quantity,
+            },
+            approvedQuantity: {
+              decrement: entry.quantity,
+            },
+          },
+        });
+
+        await tx.auditLog.create({
+          data: {
+            actorId: managerId,
+            action: 'WORK_ENTRY_APPROVAL_REVOKED',
+            entityType: 'WorkEntry',
+            entityId: entry.id,
+            beforeData: {
+              status: entry.status,
+              quantity: entry.quantity,
+              claimedQuantity: batchOperation.claimedQuantity,
+              approvedQuantity: batchOperation.approvedQuantity,
+            },
+            afterData: {
+              status: ApprovalStatus.REJECTED,
+              quantity: entry.quantity,
+              reviewerNote: revokedNote,
+              claimedQuantity:
+                batchOperation.claimedQuantity - entry.quantity,
+              approvedQuantity:
+                batchOperation.approvedQuantity - entry.quantity,
+            },
+          },
+        });
+
+        return {
+          id: updated.id,
+          status: updated.status,
+          reviewerNote: updated.reviewerNote,
+          reviewedAt: updated.reviewedAt?.toISOString() ?? null,
+        };
+      },
+    );
+
+    return result;
+  }
 
   async reject(
     reviewerId: string,

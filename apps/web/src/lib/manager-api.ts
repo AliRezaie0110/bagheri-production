@@ -2192,3 +2192,15 @@ export function managerError(
 
   return "ارتباط با سرور برقرار نشد. دوباره تلاش کنید.";
 }
+
+export function undoWorkEntryApproval(
+  id: string,
+): Promise<unknown> {
+  return apiFetch(
+    `/work-entries/${id}/undo-approval`,
+    {
+      method: "POST",
+      body: JSON.stringify({}),
+    },
+  );
+}
